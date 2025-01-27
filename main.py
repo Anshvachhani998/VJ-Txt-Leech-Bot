@@ -56,57 +56,81 @@ async def restart_handler(_, m):
     os.execl(sys.executable, sys.executable, *sys.argv)
 
 
-from aiml import Kernel  # AIML library
+import openai
+import requests
+from PIL import Image
+from io import BytesIO
+from moviepy.editor import ImageClip, CompositeVideoClip
+import os
+from pyrogram import Client, filters
 
-# Initialize AIML Kernel
-kernel = Kernel()
-kernel.learn("startup.xml")
-kernel.respond("load aiml b")  # Load AIML patterns
+# Set your OpenAI API key
+openai.api_key = "sk-ijkl1234ijkl1234ijkl1234ijkl1234ijkl1234"
 
-# Function to Generate Video from Text
-def create_video_from_text(user_text):
-    # Create a simple image with text
-    img_width, img_height = 1280, 720
-    img = Image.new("RGB", (img_width, img_height), color="black")
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
-    text_width, text_height = draw.textsize(user_text, font=font)
-    text_x = (img_width - text_width) // 2
-    text_y = (img_height - text_height) // 2
-    draw.text((text_x, text_y), user_text, fill="white", font=font)
-    
-    # Save the image
-    image_path = "videos/temp_image.png"
+# Set your Telegram bot API token
+
+
+# Function to generate image from text using OpenAI's DALL·E API
+def generate_image_from_text(prompt):
+    response = openai.Image.create(
+        prompt=prompt,
+        n=1,
+        size="1024x1024"
+    )
+    image_url = response['data'][0]['url']
+    return image_url
+
+# Download the image from the URL
+def download_image(image_url):
+    response = requests.get(image_url)
+    img = Image.open(BytesIO(response.content))
+    image_path = "generated_image.png"
     img.save(image_path)
-    
-    # Create a video clip
-    clip = mp.ImageClip(image_path, duration=5)  # 5 seconds video
-    clip = clip.set_fps(24).set_audio(None)  # Set fps to 24
-    video_path = "videos/output_video.mp4"
-    
-    # Write the video file with the correct fps
-    clip.write_videofile(video_path, codec="libx264", fps=24)
+    return image_path
 
-    os.remove(image_path)  # Cleanup image
+# Apply animation effects on image (e.g., zoom-in)
+def create_animated_video(image_path):
+    clip = ImageClip(image_path, duration=5)
+
+    # Apply animation effects - e.g., zoom-in effect
+    zoomed_clip = clip.resize(lambda t: 1 + 0.02 * t)  # Slowly zoom in over time
+    zoomed_clip = zoomed_clip.set_fps(24)
+
+    # Create a video from the animated clip
+    video_path = "output_video.mp4"
+    zoomed_clip.write_videofile(video_path, codec="libx264")
+
     return video_path
 
-
-# Telegram Bot Command
+# Pyrogram handler for /txt command
 @bot.on_message(filters.command("txt"))
 async def text_to_video(client, message):
-    user_text = message.text.replace("/txt", "").strip()
-    await message.reply("Analyzing your input with AI, please wait...")
-    
-    # Use AIML to analyze user input
-    aiml_response = kernel.respond(user_text)
-    
-    # Generate a video based on AIML response
+    user_text = message.text[len("/txt "):]  # Get the text after the /txt command
+    if not user_text:
+        await message.reply("Please provide some text after the /txt command.")
+        return
+
+    await message.reply("Processing your video, please wait...")
+
     try:
-        video_path = create_video_from_text(aiml_response)
-        await client.send_video(chat_id=message.chat.id, video=video_path, caption="Here's your AI-generated video!")
-        os.remove(video_path)  # Clean up video after sending
+        # Generate the image from text
+        image_url = generate_image_from_text(user_text)
+        image_path = download_image(image_url)
+
+        # Create the animated video
+        video_path = create_animated_video(image_path)
+
+        # Send the video to the user
+        await message.reply_video(video_path, caption="Here's your animated video!")
+
+        # Clean up temporary files
+        os.remove(image_path)
+        os.remove(video_path)
+
     except Exception as e:
-        await message.reply(f"Error while creating video: {str(e)}")
+        await message.reply(f"An error occurred: {str(e)}")
+
+
 
 
 
