@@ -56,58 +56,56 @@ async def restart_handler(_, m):
     os.execl(sys.executable, sys.executable, *sys.argv)
 
 
-# Text to Video Functionality
+from aiml import Kernel  # AIML library
 
+# Initialize AIML Kernel
+kernel = Kernel()
+kernel.learn("startup.xml")
+kernel.respond("load aiml b")  # Load AIML patterns
 
-# Command handler for /txt
-@bot.on_message(filters.command("txt"))
-async def text_to_video(client, message):
-    user_text = message.text
-    await message.reply("Processing your video, please wait...")
-
-    # Create video from text
-    video_path = create_video(user_text)
-
-    # Send the video to user
-    await client.send_video(
-        chat_id=message.chat.id,
-        video=video_path,
-        caption="Here's your video!"
-    )
-
-    # Clean up video
-    os.remove(video_path)
-
-
-def create_video(text):
-    # Create an image
+# Function to Generate Video from Text
+def create_video_from_text(user_text):
+    # Create a simple image with text
     img_width, img_height = 1280, 720
     img = Image.new("RGB", (img_width, img_height), color="black")
     draw = ImageDraw.Draw(img)
-
-    # Use default font (No specific font file required)
     font = ImageFont.load_default()
-    
-    # Add Text to the Image
-    text_width, text_height = draw.textsize(text, font=font)
+    text_width, text_height = draw.textsize(user_text, font=font)
     text_x = (img_width - text_width) // 2
     text_y = (img_height - text_height) // 2
-    draw.text((text_x, text_y), text, fill="white", font=font)
-
+    draw.text((text_x, text_y), user_text, fill="white", font=font)
+    
     # Save the image
     image_path = "videos/temp_image.png"
     img.save(image_path)
-
-    # Create a video clip from the image
-    clip = mp.ImageClip(image_path, duration=5)  # 5 seconds video
-    clip = clip.set_fps(24).set_audio(None)  # No audio
+    
+    # Create a video
+    clip = mp.ImageClip(image_path, duration=5)
     video_path = "videos/output_video.mp4"
     clip.write_videofile(video_path, codec="libx264")
-
-    # Clean up temporary image
-    os.remove(image_path)
-
+    
+    os.remove(image_path)  # Cleanup image
     return video_path
+
+# Telegram Bot Command
+@bot.on_message(filters.command("txt"))
+async def text_to_video(client, message):
+    user_text = message.text.replace("/txt", "").strip()
+    await message.reply("Analyzing your input with AI, please wait...")
+    
+    # Use AIML to analyze user input
+    aiml_response = kernel.respond(user_text)
+    
+    # Generate a video based on AIML response
+    try:
+        video_path = create_video_from_text(aiml_response)
+        await client.send_video(chat_id=message.chat.id, video=video_path, caption="Here's your AI-generated video!")
+        os.remove(video_path)  # Clean up video after sending
+    except Exception as e:
+        await message.reply(f"Error while creating video: {str(e)}")
+
+
+
 
 @bot.on_message(filters.command(["upload"]))
 async def upload(bot: Client, m: Message):
