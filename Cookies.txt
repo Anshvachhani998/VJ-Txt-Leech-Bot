@@ -1,0 +1,6 @@
+# domain        include_in_cookie_jar    path    secure    expiration_time_in_seconds    cookie_name    cookie_value
+
+.jiocinema.com  TRUE                      /        TRUE     1756393182                 login_status    TRUE
+.jiocinema.com  TRUE                      /        TRUE     1756393182                 afUserId        5db60eb2-ae17-47c7-8fca-1aaf778d4688-p
+.appsflyer.com  TRUE                      /        TRUE     1756393183                 AF_ID           5db60eb2-ae17-47c7-8fca-1aaf778d4688-p
+.jiocinema.com  TRUE                      /        TRUE     1746045582                 _fbp            fb.1.1738003114750.807723189148820149
