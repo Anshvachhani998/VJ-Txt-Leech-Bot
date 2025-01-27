@@ -141,30 +141,27 @@ from spotdl import Spotdl
 client_id = 'feef7905dd374fd58ba72e08c0d77e70'
 client_secret = '60b4007a8b184727829670e2e0f911ca'
 
-# Initialize Spotdl with your credentials
+import asyncio
+from spotdl import Spotdl
+
+# Initialize Spotdl
 spotify_downloader = Spotdl(client_id=client_id, client_secret=client_secret)
 
-# Function to download song and send it to the user
-def download_and_send_song(track_url, user_id):
+async def download_and_send_song(track_url, user_id):
     try:
-        # Get track name from the URL
-        track_name = spotify_downloader.get_track_name(track_url)
-        
-        # Download the song using spotdl
+        # Run the download in a separate thread to avoid blocking the main loop
+        track_name = await asyncio.to_thread(spotify_downloader.get_track_name, track_url)
         file_path = f"downloads/{track_name}.mp3"
-        spotify_downloader.download(track_url, file_path)
-        
-        # Check if file exists and send it to user
+        await asyncio.to_thread(spotify_downloader.download, track_url, file_path)
+
         if os.path.exists(file_path):
             with open(file_path, 'rb') as song_file:
-                bot.send_audio(user_id, song_file)
-            
-            # Optionally, delete the file after sending
+                await bot.send_audio(user_id, song_file)
             os.remove(file_path)
         else:
-            bot.send_message(user_id, "There was an issue downloading the song.")
+            await bot.send_message(user_id, "There was an issue downloading the song.")
     except Exception as e:
-        bot.send_message(user_id, f"Error: {str(e)}")
+        await bot.send_message(user_id, f"Error: {str(e)}")
 
 # Command handler for !dwn <spotify_link>
 @bot.on_message(filters.command("dwn"))
