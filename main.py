@@ -78,8 +78,10 @@ async def download_video(client, message):
 
 def download_video_func(url):
     cookies_path = os.getenv("COOKIES_PATH", "cookies.txt")  # Default to "cookies.txt" if not set
-    output_path = "output.mp4"
-    
+    video_directory = "videos"
+    os.makedirs(video_directory, exist_ok=True)  # Ensure the directory exists
+    output_path = os.path.join(video_directory, "output.mp4")  # Save video inside the "videos" directory
+
     # Run yt-dlp command with progress info
     command = [
         "yt-dlp",
@@ -90,10 +92,30 @@ def download_video_func(url):
         "-o", output_path,          # Output file name
         url                          # The video URL provided by the user
     ]
-    
+
     # Run the command and capture the output
-    subprocess.run(command, check=True)
-    return output_path
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Print progress info
+    for stdout_line in iter(process.stdout.readline, b''):
+        print(stdout_line.decode(), end='')  # Decode byte to string and print
+
+    # Capture and print error output
+    stderr_output = process.stderr.read().decode()
+    if stderr_output:
+        print(f"Error output: {stderr_output}")
+
+    # Wait for the process to complete
+    process.stdout.close()
+    process.stderr.close()
+    process.wait()
+
+    if os.path.exists(output_path):
+        return output_path
+    else:
+        raise Exception("Video download failed.")
+
+
 
 
 
