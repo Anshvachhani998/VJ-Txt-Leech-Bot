@@ -134,6 +134,7 @@ import os
 from pyrogram import Client, filters
 from spotdl import Spotdl
 
+app = Client
 # Spotify Downloader Setup
 spotify_downloader = Spotdl()
 
