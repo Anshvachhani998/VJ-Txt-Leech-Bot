@@ -73,15 +73,17 @@ async def text_to_video(client, message):
     # Clean up video
     os.remove(video_path)
 
-# Video Creation Logic
+
 def create_video(text):
     # Create an image
     img_width, img_height = 1280, 720
     img = Image.new("RGB", (img_width, img_height), color="black")
     draw = ImageDraw.Draw(img)
 
+    # Use default font (No specific font file required)
+    font = ImageFont.load_default()
+    
     # Add Text to the Image
-    font = ImageFont.truetype("arial.ttf", 40)  # Use any font file
     text_width, text_height = draw.textsize(text, font=font)
     text_x = (img_width - text_width) // 2
     text_y = (img_height - text_height) // 2
@@ -101,7 +103,6 @@ def create_video(text):
     os.remove(image_path)
 
     return video_path
-
 
 @bot.on_message(filters.command(["upload"]))
 async def upload(bot: Client, m: Message):
