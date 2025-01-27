@@ -20,7 +20,7 @@ from pyrogram.errors import FloodWait
 
 import core as helper
 from utils import progress_bar
-from vars import API_ID, API_HASH, BOT_TOKEN
+from vars import API_ID, API_HASH, BOT_TOKEN, API
 from aiohttp import ClientSession
 from pyromod import listen
 from subprocess import getstatusoutput
@@ -65,8 +65,7 @@ import os
 from pyrogram import Client, filters
 
 # Set your OpenAI API key
-openai.api_key = "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"
-
+openai.api_key = API
 # Set your Telegram bot API token
 
 
