@@ -11,6 +11,13 @@ import asyncio
 import requests
 import subprocess
 
+import os
+from PIL import Image, ImageDraw, ImageFont
+import moviepy.editor as mp
+from pyrogram import Client, filters
+from pyrogram.types import Message
+from pyrogram.errors import FloodWait
+
 import core as helper
 from utils import progress_bar
 from vars import API_ID, API_HASH, BOT_TOKEN
@@ -44,6 +51,53 @@ async def restart_handler(_, m):
     os.execl(sys.executable, sys.executable, *sys.argv)
 
 
+# Text to Video Functionality
+@bot.on_message(filters.text & ~filters.command)
+async def text_to_video(client, message):
+    user_text = message.text
+    await message.reply("Processing your video, please wait...")
+
+    # Create video from text
+    video_path = create_video(user_text)
+
+    # Send the video to user
+    await client.send_video(
+        chat_id=message.chat.id,
+        video=video_path,
+        caption="Here's your video!"
+    )
+
+    # Clean up video
+    os.remove(video_path)
+
+# Video Creation Logic
+def create_video(text):
+    # Create an image
+    img_width, img_height = 1280, 720
+    img = Image.new("RGB", (img_width, img_height), color="black")
+    draw = ImageDraw.Draw(img)
+
+    # Add Text to the Image
+    font = ImageFont.truetype("arial.ttf", 40)  # Use any font file
+    text_width, text_height = draw.textsize(text, font=font)
+    text_x = (img_width - text_width) // 2
+    text_y = (img_height - text_height) // 2
+    draw.text((text_x, text_y), text, fill="white", font=font)
+
+    # Save the image
+    image_path = "videos/temp_image.png"
+    img.save(image_path)
+
+    # Create a video clip from the image
+    clip = mp.ImageClip(image_path, duration=5)  # 5 seconds video
+    clip = clip.set_fps(24).set_audio(None)  # No audio
+    video_path = "videos/output_video.mp4"
+    clip.write_videofile(video_path, codec="libx264")
+
+    # Clean up temporary image
+    os.remove(image_path)
+
+    return video_path
 
 @bot.on_message(filters.command(["upload"]))
 async def upload(bot: Client, m: Message):
