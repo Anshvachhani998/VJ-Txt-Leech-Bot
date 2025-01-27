@@ -136,7 +136,16 @@ from spotdl import Spotdl
 
 app = Client
 # Spotify Downloader Setup
-spotify_downloader = Spotdl()
+
+# Your Spotify credentials (replace with your actual client_id and client_secret)
+client_id = 'feef7905dd374fd58ba72e08c0d77e70'
+client_secret = '60b4007a8b184727829670e2e0f911ca'
+
+# Initialize Spotdl with your credentials
+spotify_downloader = Spotdl(client_id=client_id, client_secret=client_secret)
+
+# Now you can proceed with the download and usage of Spotdl
+
 
 # Function to download song and send it to the user
 def download_and_send_song(track_url, user_id):
