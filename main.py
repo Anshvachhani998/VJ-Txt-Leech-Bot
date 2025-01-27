@@ -170,7 +170,7 @@ def download_and_send_song(track_url, user_id):
         app.send_message(user_id, f"Error: {str(e)}")
 
 # Command handler for !dwn <spotify_link>
-@app.on_message(filters.command("dwn") & filters.text)
+@app.on_message(filters.command("dwn"))
 async def handle_download_command(client, message):
     # Extract the Spotify link after the command
     if len(message.text.split()) > 1:
