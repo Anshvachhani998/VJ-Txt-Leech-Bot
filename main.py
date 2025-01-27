@@ -73,6 +73,8 @@ def download_video_func(url):
     command = [
         "yt-dlp",
         "--cookies", cookies_path,  # Path to cookies.txt
+        "--socket-timeout", "30",
+        "-f", "135",  # Format for 360p
         "-o", output_path,          # Output file name
         url                          # The video URL provided by the user
     ]
