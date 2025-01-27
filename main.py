@@ -65,7 +65,7 @@ import os
 from pyrogram import Client, filters
 
 # Set your OpenAI API key
-openai.api_key = "sk-ijkl1234ijkl1234ijkl1234ijkl1234ijkl1234"
+openai.api_key = "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"
 
 # Set your Telegram bot API token
 
