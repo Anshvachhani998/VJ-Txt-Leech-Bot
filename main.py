@@ -79,13 +79,17 @@ def create_video_from_text(user_text):
     image_path = "videos/temp_image.png"
     img.save(image_path)
     
-    # Create a video
-    clip = mp.ImageClip(image_path, duration=5)
+    # Create a video clip
+    clip = mp.ImageClip(image_path, duration=5)  # 5 seconds video
+    clip = clip.set_fps(24).set_audio(None)  # Set fps to 24
     video_path = "videos/output_video.mp4"
-    clip.write_videofile(video_path, codec="libx264")
     
+    # Write the video file with the correct fps
+    clip.write_videofile(video_path, codec="libx264", fps=24)
+
     os.remove(image_path)  # Cleanup image
     return video_path
+
 
 # Telegram Bot Command
 @bot.on_message(filters.command("txt"))
