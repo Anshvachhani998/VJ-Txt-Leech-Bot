@@ -45,7 +45,7 @@ video_directory = "videos"
 async def send_welcome(client, message):
     await message.reply("Welcome! Use /dwn <link> to download JioCinema videos.")
 
-# Command to download video
+
 @bot.on_message(filters.command("dwn"))
 async def download_video(client, message):
     try:
@@ -56,13 +56,23 @@ async def download_video(client, message):
         # Call the function to download video
         video_path = download_video_func(video_url)
 
-        # Notify the user and send the downloaded video
-        await message.reply("Download complete! Sending the video...")
-        await bot.send_video(message.chat.id, video_path)
+        # Check if the video file exists
+        if os.path.exists(video_path):
+            await message.reply("Download complete! Sending the video...")
+            try:
+                await bot.send_video(message.chat.id, video_path)
+            except FloodWait as e:
+                await message.reply(f"Rate limit exceeded. Waiting for {e.x} seconds.")
+                time.sleep(e.x)  # Wait before retrying
+                await bot.send_video(message.chat.id, video_path)
+        else:
+            await message.reply("Error: The video could not be downloaded.")
+
     except IndexError:
         await message.reply("Please provide a valid link! Usage: /dwn <link>")
     except Exception as e:
         await message.reply(f"Error: {str(e)}")
+
 
 
 
