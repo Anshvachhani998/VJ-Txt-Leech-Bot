@@ -134,7 +134,7 @@ import os
 from pyrogram import Client, filters
 from spotdl import Spotdl
 
-app = Client
+app = bot
 # Spotify Downloader Setup
 
 # Your Spotify credentials (replace with your actual client_id and client_secret)
