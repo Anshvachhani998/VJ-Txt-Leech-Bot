@@ -52,7 +52,10 @@ async def restart_handler(_, m):
 
 
 # Text to Video Functionality
-@bot.on_message(filters.text & ~filters.command)
+
+
+# Command handler for /txt
+@bot.on_message(filters.command("txt"))
 async def text_to_video(client, message):
     user_text = message.text
     await message.reply("Processing your video, please wait...")
@@ -98,6 +101,7 @@ def create_video(text):
     os.remove(image_path)
 
     return video_path
+
 
 @bot.on_message(filters.command(["upload"]))
 async def upload(bot: Client, m: Message):
