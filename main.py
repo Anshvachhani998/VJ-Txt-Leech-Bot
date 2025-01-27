@@ -92,17 +92,9 @@ def download_video_func(url):
     ]
     
     # Run the command and capture the output
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess.run(command, check=True)
+    return output_path
 
-    # Print progress info
-    for stdout_line in iter(process.stdout.readline, b''):
-        print(stdout_line.decode(), end='')  # Decode byte to string and print
-
-    # Wait for the process to complete
-    process.stdout.close()
-    process.wait()
-
-    return output_path  # Return the path of the downloaded video
 
 
 
