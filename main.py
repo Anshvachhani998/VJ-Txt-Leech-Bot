@@ -1,7 +1,7 @@
 import os
 from pyrogram import Client, filters
 from spotdl import Spotdl
-
+from vars import API_ID, API_HASH, BOT_TOKEN
 bot = Client(
     "bot",
     api_id=API_ID,
