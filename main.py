@@ -86,21 +86,30 @@ async def get_video_url(url, message):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        await page.goto(url)
 
-        # Add progress update for loading video
-        await message.reply("🔄 Loading video page...")
+        try:
+            await page.goto(url, wait_until="load")  # Wait until the page fully loads
+            await page.wait_for_selector("video", timeout=30000)  # Wait for video element to load
 
-        # Logic to extract video URL
-        video_url = await page.evaluate("document.querySelector('video').src")  # Example of extracting video src
-        if not video_url:
-            await message.reply("❌ Failed to find video URL.")
+            # Add progress update for loading video
+            await message.reply("🔄 Loading video page...")
+
+            # Logic to extract video URL
+            video_url = await page.evaluate("document.querySelector('video').src")  # Example of extracting video src
+
+            if not video_url:
+                await message.reply("❌ Failed to find video URL.")
+                await browser.close()
+                return None
+
+            await message.reply("✅ Video URL found!")
+            return video_url
+
+        except Exception as e:
+            await message.reply(f"❌ Error: {str(e)}")
             await browser.close()
             return None
 
-        await message.reply("✅ Video URL found!")
-        await browser.close()
-        return video_url
 
 
 # 📥 Function to download video with yt-dlp Python API
