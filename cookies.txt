@@ -1,3 +1,7 @@
+# Netscape HTTP Cookie File
+# http://curl.haxx.se/rfc/cookie_spec.html
+# This is a generated file!  Do not edit.
+
 www.jiocinema.com	FALSE	/	FALSE	1769581610	x-ab-origin	prod_1
 www.jiocinema.com	FALSE	/	FALSE	1741507424	panicToggle	false
 .jiocinema.com	TRUE	/	FALSE	1769587428	WZRK_G	0238d7b98880489dad494d53cbd01597
