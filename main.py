@@ -116,24 +116,27 @@ async def download_video(client, message):
 # 📥 Function to download video
 def download_video_func(url):
     output_path = os.path.join(VIDEO_DIR, "output.mp4")
+    print(f"Downloading video to: {output_path}")  # Debug log
 
     command = [
         "yt-dlp",
         "--cookies", COOKIES_PATH,
         "--socket-timeout", "30",
-        "-f", "135",  # 360p quality
+        "-f", "best",  # Changed to 'best' to ensure you get the best quality available
         "-o", output_path,
         url
     ]
 
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
+    # Capture and print the process stdout for debugging
     for stdout_line in iter(process.stdout.readline, b''):
         print(stdout_line.decode(), end='')
 
     stderr_output = process.stderr.read().decode()
     if stderr_output:
         print(f"❌ Error output: {stderr_output}")
+        raise Exception(f"❌ Video download failed: {stderr_output}")
 
     process.stdout.close()
     process.stderr.close()
