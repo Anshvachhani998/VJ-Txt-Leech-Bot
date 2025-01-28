@@ -86,6 +86,7 @@ async def get_video_url(url, message):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
+        print(f"{reciverd get {url}")
 
         try:
             await page.goto(url, wait_until="load")  # Wait until the page fully loads
