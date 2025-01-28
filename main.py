@@ -38,7 +38,7 @@ async def check_cookies(client, message):
         return
 
     headers = {"User-Agent": "Mozilla/5.0"}
-    url = "https://www.jiocinema.com/api/v1/movies"  # Sample API endpoint
+    url = "https://www.jiocinema.com/movies"  # Sample API endpoint
 
     try:
         response = requests.get(url, headers=headers, cookies=cookies)
