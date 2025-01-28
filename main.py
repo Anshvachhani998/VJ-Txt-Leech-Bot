@@ -49,7 +49,6 @@ async def check_cookies(client, message):
     except Exception as e:
         await message.reply(f"❌ Error checking cookies: {str(e)}")
 
-# 🎬 Command to fetch movie details
 @bot.on_message(filters.command("movie_info"))
 async def fetch_movie_info(client, message):
     try:
@@ -62,15 +61,21 @@ async def fetch_movie_info(client, message):
 
         headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
         
-
         response = requests.get(video_url, headers=headers, cookies=cookies)
-        if response.status_code == 200:
-            data = response.json()
-            title = data.get("title", "Unknown Title")
-            description = data.get("description", "No description available.")
-            duration = data.get("duration", "Unknown duration")
 
-            await message.reply(f"🎬 **Movie Info:**\n\n📌 Title: {title}\n📝 Description: {description}\n⏳ Duration: {duration}")
+        print(response.text)  # Check the raw response body for debugging
+        subprocess.run(video_url)
+        
+        if response.status_code == 200:
+            try:
+                data = response.json()  # Try to parse the response as JSON
+                title = data.get("title", "Unknown Title")
+                description = data.get("description", "No description available.")
+                duration = data.get("duration", "Unknown duration")
+                
+                await message.reply(f"🎬 **Movie Info:**\n\n📌 Title: {title}\n📝 Description: {description}\n⏳ Duration: {duration}")
+            except ValueError:
+                await message.reply("⚠️ Response is not in valid JSON format!")
         else:
             await message.reply(f"⚠️ Failed to fetch movie details! Status Code: {response.status_code}")
     except IndexError:
