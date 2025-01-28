@@ -54,7 +54,6 @@ async def check_cookies(client, message):
 async def fetch_movie_info(client, message):
     try:
         video_url = message.text.split(" ")[1]
-        movie_id = video_url.split("/")[-2]  # Extract movie ID from URL
 
         cookies = load_cookies()
         if not cookies:
@@ -62,9 +61,9 @@ async def fetch_movie_info(client, message):
             return
 
         headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-        api_url = f"https://www.jiocinema.com/movies/{movie_id}"
+        
 
-        response = requests.get(api_url, headers=headers, cookies=cookies)
+        response = requests.get(video_url, headers=headers, cookies=cookies)
         if response.status_code == 200:
             data = response.json()
             title = data.get("title", "Unknown Title")
