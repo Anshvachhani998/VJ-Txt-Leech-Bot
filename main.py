@@ -86,7 +86,7 @@ async def get_video_url(url, message):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        print(f"{reciverd get {url}")
+        print(f"reciverd get {url}")
 
         try:
             await page.goto(url, wait_until="load")  # Wait until the page fully loads
@@ -116,7 +116,7 @@ async def get_video_url(url, message):
 # 📥 Function to download video with yt-dlp Python API
 async def download_video_func(url, message):
     # Get the video URL using Playwright
-    print(f"Downloading {url}")
+    print(f"Downloading")
     video_url = await get_video_url(url, message)
     
     
