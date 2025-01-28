@@ -62,7 +62,7 @@ async def fetch_movie_info(client, message):
             return
 
         headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-        api_url = f"https://www.jiocinema.com/api/v1/movies/{movie_id}"
+        api_url = f"https://www.jiocinema.com/movies/{movie_id}"
 
         response = requests.get(api_url, headers=headers, cookies=cookies)
         if response.status_code == 200:
@@ -79,10 +79,14 @@ async def fetch_movie_info(client, message):
     except Exception as e:
         await message.reply(f"❌ Error fetching movie details: {str(e)}")
 
-# ⬇️ Command to download video
 @bot.on_message(filters.command("dwn"))
 async def download_video(client, message):
     try:
+        # Check if a URL is provided in the command
+        if len(message.text.split(" ")) < 2:
+            await message.reply("❌ Usage: `/dwn <JioCinema URL>`")
+            return
+
         video_url = message.text.split(" ")[1]
         await message.reply(f"📥 Processing your link: {video_url}")
 
@@ -99,10 +103,9 @@ async def download_video(client, message):
         else:
             await message.reply("❌ Error: The video could not be downloaded.")
 
-    except IndexError:
-        await message.reply("Usage: `/dwn <JioCinema URL>`")
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
+
 
 # 📥 Function to download video
 def download_video_func(url):
