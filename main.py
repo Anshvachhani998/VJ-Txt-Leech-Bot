@@ -115,7 +115,9 @@ async def get_video_url(url, message):
 # 📥 Function to download video with yt-dlp Python API
 async def download_video_func(url, message):
     # Get the video URL using Playwright
+    print(f"Downloading {url}")
     video_url = await get_video_url(url, message)
+    
     
     if not video_url:
         raise Exception("❌ Failed to extract video URL.")
