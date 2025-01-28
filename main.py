@@ -4,13 +4,9 @@ import subprocess
 import time
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
-
-import core as helper
-from utils import progress_bar
+import yt_dlp as youtube_dl
 from vars import API_ID, API_HASH, BOT_TOKEN
-from aiohttp import ClientSession
-from pyromod import listen
-
+# Initialize the bot with your API keys
 bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 COOKIES_PATH = os.getenv("COOKIES_PATH", "cookies.txt")
@@ -29,7 +25,6 @@ def load_cookies():
                         cookies[parts[5]] = parts[6].strip()
     return cookies
 
-# ✅ Command to check if cookies are valid
 @bot.on_message(filters.command("check_cookies"))
 async def check_cookies(client, message):
     cookies = load_cookies()
@@ -49,48 +44,12 @@ async def check_cookies(client, message):
     except Exception as e:
         await message.reply(f"❌ Error checking cookies: {str(e)}")
 
-from bs4 import BeautifulSoup
-import requests
-
-@bot.on_message(filters.command("movie_info"))
-async def fetch_movie_info(client, message):
-    try:
-        video_url = message.text.split(" ")[1]
-
-        cookies = load_cookies()
-        if not cookies:
-            await message.reply("⚠️ Cookies file is missing or invalid.")
-            return
-
-        headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-        
-        response = requests.get(video_url, headers=headers, cookies=cookies)
-
-        if response.status_code == 200:
-            # Parse HTML content using BeautifulSoup
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Extract title, description, and other details (customize as per your requirement)
-            title = soup.find('meta', {'property': 'og:title'})['content'] if soup.find('meta', {'property': 'og:title'}) else "Unknown Title"
-            description = soup.find('meta', {'name': 'description'})['content'] if soup.find('meta', {'name': 'description'}) else "No description available."
-            
-            # You can further extract duration or other details similarly.
-            
-            await message.reply(f"🎬 **Movie Info:**\n\n📌 Title: {title}\n📝 Description: {description}")
-        else:
-            await message.reply(f"⚠️ Failed to fetch movie details! Status Code: {response.status_code}")
-    except IndexError:
-        await message.reply("Usage: `/movie_info <movie_url>`")
-    except Exception as e:
-        await message.reply(f"❌ Error fetching movie details: {str(e)}")
-
-
 @bot.on_message(filters.command("dwn"))
 async def download_video(client, message):
     try:
         # Check if a URL is provided in the command
         if len(message.text.split(" ")) < 2:
-            await message.reply("❌ Usage: `/dwn <JioCinema URL>`")
+            await message.reply("❌ Usage: `/dwn <video_url>`")
             return
 
         video_url = message.text.split(" ")[1]
@@ -112,39 +71,32 @@ async def download_video(client, message):
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
 
-
-# 📥 Function to download video
+# 📥 Function to download video using yt-dlp
 def download_video_func(url):
     output_path = os.path.join(VIDEO_DIR, "output.mp4")
     print(f"Downloading video to: {output_path}")  # Debug log
 
-    command = [
-        "yt-dlp",
-        "--cookies", COOKIES_PATH,  # Ensure the cookies are in Netscape format
-        "--socket-timeout", "30",
-        "-o", output_path,
-        url
-    ]
+    ydl_opts = {
+        'outtmpl': output_path,
+        'quiet': False,  # Show output for debugging
+        'noplaylist': True,  # Avoid playlist downloads
+        'extractaudio': False,
+        'format': 'bestvideo+bestaudio/best',
+        'cookies': COOKIES_PATH,
+    }
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Ensure yt-dlp handles the URL correctly
+    try:
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])  # Download using yt-dlp
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        raise Exception(f"❌ Video download failed: {str(e)}")
 
-    # Capture and print the process stdout for debugging
-    for stdout_line in iter(process.stdout.readline, b''):
-        print(stdout_line.decode(), end='')
-
-    stderr_output = process.stderr.read().decode()
-    if stderr_output:
-        print(f"❌ Error output: {stderr_output}")
-        raise Exception(f"❌ Video download failed: {stderr_output}")
-
-    process.stdout.close()
-    process.stderr.close()
-    process.wait()
-
+    # Check if video downloaded successfully
     if os.path.exists(output_path):
         return output_path
     else:
         raise Exception("❌ Video download failed.")
-
 
 bot.run()
