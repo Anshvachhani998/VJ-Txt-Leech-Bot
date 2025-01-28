@@ -1,17 +1,8 @@
 import os
-import re
-import sys
-import json
-import time
-import asyncio
 import requests
 import subprocess
-
-import os
-from PIL import Image, ImageDraw, ImageFont
-import moviepy.editor as mp
+import time
 from pyrogram import Client, filters
-from pyrogram.types import Message
 from pyrogram.errors import FloodWait
 
 import core as helper
@@ -19,93 +10,122 @@ from utils import progress_bar
 from vars import API_ID, API_HASH, BOT_TOKEN
 from aiohttp import ClientSession
 from pyromod import listen
-from subprocess import getstatusoutput
 
-from pyrogram import Client, filters
-from pyrogram.types import Message
-from pyrogram.errors import FloodWait
-from pyrogram.errors.exceptions.bad_request_400 import StickerEmojiInvalid
-from pyrogram.types.messages_and_media import message
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
+COOKIES_PATH = os.getenv("COOKIES_PATH", "cookies.txt")
+VIDEO_DIR = "videos"
+os.makedirs(VIDEO_DIR, exist_ok=True)  # Ensure videos folder exists
 
-bot = Client(
-    "bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN)
+# Function to load cookies from file
+def load_cookies():
+    cookies = {}
+    if os.path.exists(COOKIES_PATH):
+        with open(COOKIES_PATH, "r") as file:
+            for line in file:
+                if not line.startswith("#") and line.strip():
+                    parts = line.split("\t")
+                    if len(parts) >= 7:
+                        cookies[parts[5]] = parts[6].strip()
+    return cookies
 
+# ✅ Command to check if cookies are valid
+@bot.on_message(filters.command("check_cookies"))
+async def check_cookies(client, message):
+    cookies = load_cookies()
+    if not cookies:
+        await message.reply("⚠️ Cookies file is empty or invalid.")
+        return
 
-video_directory = "videos"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    url = "https://www.jiocinema.com/api/v1/movies"  # Sample API endpoint
 
+    try:
+        response = requests.get(url, headers=headers, cookies=cookies)
+        if response.status_code == 200:
+            await message.reply("✅ Cookies are valid! You are authenticated.")
+        else:
+            await message.reply(f"⚠️ Invalid cookies! Status Code: {response.status_code}")
+    except Exception as e:
+        await message.reply(f"❌ Error checking cookies: {str(e)}")
 
+# 🎬 Command to fetch movie details
+@bot.on_message(filters.command("movie_info"))
+async def fetch_movie_info(client, message):
+    try:
+        video_url = message.text.split(" ")[1]
+        movie_id = video_url.split("/")[-2]  # Extract movie ID from URL
 
-# Command to start the bot
-@bot.on_message(filters.command("start"))
-async def send_welcome(client, message):
-    await message.reply("Welcome! Use /dwn <link> to download JioCinema videos.")
+        cookies = load_cookies()
+        if not cookies:
+            await message.reply("⚠️ Cookies file is missing or invalid.")
+            return
 
+        headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+        api_url = f"https://www.jiocinema.com/api/v1/movies/{movie_id}"
 
+        response = requests.get(api_url, headers=headers, cookies=cookies)
+        if response.status_code == 200:
+            data = response.json()
+            title = data.get("title", "Unknown Title")
+            description = data.get("description", "No description available.")
+            duration = data.get("duration", "Unknown duration")
+
+            await message.reply(f"🎬 **Movie Info:**\n\n📌 Title: {title}\n📝 Description: {description}\n⏳ Duration: {duration}")
+        else:
+            await message.reply(f"⚠️ Failed to fetch movie details! Status Code: {response.status_code}")
+    except IndexError:
+        await message.reply("Usage: `/movie_info <movie_url>`")
+    except Exception as e:
+        await message.reply(f"❌ Error fetching movie details: {str(e)}")
+
+# ⬇️ Command to download video
 @bot.on_message(filters.command("dwn"))
 async def download_video(client, message):
     try:
-        # Extracting the link from the message
         video_url = message.text.split(" ")[1]
-        await message.reply(f"Processing your link: {video_url}")
+        await message.reply(f"📥 Processing your link: {video_url}")
 
-        # Call the function to download video
         video_path = download_video_func(video_url)
 
-        # Check if the video file exists
         if os.path.exists(video_path):
-            await message.reply("Download complete! Sending the video...")
+            await message.reply("✅ Download complete! Sending the video...")
             try:
                 await bot.send_video(message.chat.id, video_path)
             except FloodWait as e:
-                await message.reply(f"Rate limit exceeded. Waiting for {e.x} seconds.")
-                time.sleep(e.x)  # Wait before retrying
+                await message.reply(f"⚠️ Rate limit exceeded. Waiting for {e.x} seconds.")
+                time.sleep(e.x)
                 await bot.send_video(message.chat.id, video_path)
         else:
-            await message.reply("Error: The video could not be downloaded.")
+            await message.reply("❌ Error: The video could not be downloaded.")
 
     except IndexError:
-        await message.reply("Please provide a valid link! Usage: /dwn <link>")
+        await message.reply("Usage: `/dwn <JioCinema URL>`")
     except Exception as e:
-        await message.reply(f"Error: {str(e)}")
+        await message.reply(f"❌ Error: {str(e)}")
 
-
-
-
+# 📥 Function to download video
 def download_video_func(url):
-    cookies_path = os.getenv("COOKIES_PATH", "cookies.txt")  # Default to "cookies.txt" if not set
-    video_directory = "videos"
-    os.makedirs(video_directory, exist_ok=True)  # Ensure the directory exists
-    output_path = os.path.join(video_directory, "output.mp4")  # Save video inside the "videos" directory
+    output_path = os.path.join(VIDEO_DIR, "output.mp4")
 
-    # Run yt-dlp command with progress info
     command = [
         "yt-dlp",
-        "--cookies", cookies_path,
+        "--cookies", COOKIES_PATH,
         "--socket-timeout", "30",
-        "--progress",               # Show progress info in the console
-        "-f", "135",                 # Format for lower quality (e.g., 360p)
-        "-o", output_path,          # Output file name
-        url                          # The video URL provided by the user
+        "-f", "135",  # 360p quality
+        "-o", output_path,
+        url
     ]
 
-    # Run the command and capture the output
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    # Print progress info
     for stdout_line in iter(process.stdout.readline, b''):
-        print(stdout_line.decode(), end='')  # Decode byte to string and print
+        print(stdout_line.decode(), end='')
 
-    # Capture and print error output
     stderr_output = process.stderr.read().decode()
     if stderr_output:
-        print(f"Error output: {stderr_output}")
+        print(f"❌ Error output: {stderr_output}")
 
-    # Wait for the process to complete
     process.stdout.close()
     process.stderr.close()
     process.wait()
@@ -113,11 +133,6 @@ def download_video_func(url):
     if os.path.exists(output_path):
         return output_path
     else:
-        raise Exception("Video download failed.")
-
-
-
-
-
+        raise Exception("❌ Video download failed.")
 
 bot.run()
