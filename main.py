@@ -84,7 +84,7 @@ async def fetch_movie_info(client, message):
     except Exception as e:
         await message.reply(f"❌ Error fetching movie details: {str(e)}")
 
-
+from playwright.async_api import async_playwright
 
 
 
