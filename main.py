@@ -1,13 +1,15 @@
 import os
 import requests
+import subprocess
 import time
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
-from playwright.async_api import async_playwright
-from pyromod import listen
-import yt_dlp
-import asyncio
+
+import core as helper
+from utils import progress_bar
 from vars import API_ID, API_HASH, BOT_TOKEN
+from aiohttp import ClientSession
+from pyromod import listen
 
 bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
@@ -48,6 +50,7 @@ async def check_cookies(client, message):
         await message.reply(f"❌ Error checking cookies: {str(e)}")
 
 from bs4 import BeautifulSoup
+import requests
 
 @bot.on_message(filters.command("movie_info"))
 async def fetch_movie_info(client, message):
@@ -81,78 +84,7 @@ async def fetch_movie_info(client, message):
     except Exception as e:
         await message.reply(f"❌ Error fetching movie details: {str(e)}")
 
-# 🧩 Function to get video URL using Playwright Async API
-async def get_video_url(url, message):
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        print(f"reciverd get {url}")
 
-        try:
-            await page.goto(url, wait_until="load")  # Wait until the page fully loads
-            await page.wait_for_selector("video", timeout=30000)  # Wait for video element to load
-
-            # Add progress update for loading video
-            await message.reply("🔄 Loading video page...")
-
-            # Logic to extract video URL
-            video_url = await page.evaluate("document.querySelector('video').src")  # Example of extracting video src
-
-            if not video_url:
-                await message.reply("❌ Failed to find video URL.")
-                await browser.close()
-                return None
-
-            await message.reply("✅ Video URL found!")
-            return video_url
-
-        except Exception as e:
-            await message.reply(f"❌ Error: {str(e)}")
-            await browser.close()
-            return None
-
-
-
-# 📥 Function to download video with yt-dlp Python API
-async def download_video_func(url, message):
-    # Get the video URL using Playwright
-    print(f"Downloading")
-    video_url = await get_video_url(url, message)
-    
-    
-    if not video_url:
-        raise Exception("❌ Failed to extract video URL.")
-    
-    output_path = os.path.join(VIDEO_DIR, "output.mp4")
-    print(f"Downloading video to: {output_path}")  # Debug log
-
-    # Use yt-dlp API to download video and handle progress
-    ydl_opts = {
-        'format': 'best', 
-        'outtmpl': output_path,
-        'cookiefile': COOKIES_PATH,
-        'progress_hooks': [lambda d: asyncio.run(update_progress(d, message))]  # Update progress callback
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        await message.reply("📥 Downloading video... Please wait.")
-        ydl.download([video_url])
-
-    if os.path.exists(output_path):
-        return output_path
-    else:
-        raise Exception("❌ Video download failed.")
-
-# 🧩 Function to update progress
-async def update_progress(d, message):
-    if d['status'] == 'downloading':
-        # Show the current download progress
-        progress = f"🛠 Progress: {d['downloaded_bytes'] / d['total_bytes'] * 100:.2f}%"
-        await message.reply(progress)
-    elif d['status'] == 'finished':
-        await message.reply("✅ Download complete! Sending the video...")
-
-# 🧩 Bot handler for download command
 @bot.on_message(filters.command("dwn"))
 async def download_video(client, message):
     try:
@@ -164,10 +96,10 @@ async def download_video(client, message):
         video_url = message.text.split(" ")[1]
         await message.reply(f"📥 Processing your link: {video_url}")
 
-        # Call the function to download the video
-        video_path = await download_video_func(video_url, message)
+        video_path = download_video_func(video_url)
 
         if os.path.exists(video_path):
+            await message.reply("✅ Download complete! Sending the video...")
             try:
                 await bot.send_video(message.chat.id, video_path)
             except FloodWait as e:
@@ -179,6 +111,40 @@ async def download_video(client, message):
 
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
+
+
+# 📥 Function to download video
+def download_video_func(url):
+    output_path = os.path.join(VIDEO_DIR, "output.mp4")
+    print(f"Downloading video to: {output_path}")  # Debug log
+
+    command = [
+        "yt-dlp",
+        "--cookies", COOKIES_PATH,  # Ensure the cookies are in Netscape format
+        "--socket-timeout", "30",
+        "-o", output_path,
+        url
+    ]
+
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Capture and print the process stdout for debugging
+    for stdout_line in iter(process.stdout.readline, b''):
+        print(stdout_line.decode(), end='')
+
+    stderr_output = process.stderr.read().decode()
+    if stderr_output:
+        print(f"❌ Error output: {stderr_output}")
+        raise Exception(f"❌ Video download failed: {stderr_output}")
+
+    process.stdout.close()
+    process.stderr.close()
+    process.wait()
+
+    if os.path.exists(output_path):
+        return output_path
+    else:
+        raise Exception("❌ Video download failed.")
 
 
 bot.run()
