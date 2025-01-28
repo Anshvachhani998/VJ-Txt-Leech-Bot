@@ -6,6 +6,13 @@ RUN apt-get update -y && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get install -y \
+    wget ca-certificates \
+    && wget -qO- https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb > google-chrome-stable_current_amd64.deb \
+    && dpkg -i google-chrome-stable_current_amd64.deb \
+    && apt-get install -f -y \
+    && rm google-chrome-stable_current_amd64.deb
+    
 COPY . /app/
 WORKDIR /app/
 RUN pip3 install --no-cache-dir --upgrade --requirement requirements.txt
