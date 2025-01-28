@@ -1,17 +1,16 @@
 FROM python:3.10.8-slim-buster
 
-# Update the package list and install required dependencies
+# Install necessary system dependencies for Playwright and other tools
 RUN apt-get update -y && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
     gcc libffi-dev musl-dev ffmpeg aria2 python3-pip curl \
-    # Install the missing libraries required by Playwright
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libatspi2.0-0 libxcomposite1 libgbm1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright and its dependencies
+# Install Playwright and required browsers
 RUN pip3 install playwright
-RUN python -m playwright install
+RUN python3 -m playwright install
 
 # Copy the application files into the Docker image
 COPY . /app/
