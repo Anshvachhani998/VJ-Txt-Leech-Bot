@@ -85,36 +85,35 @@ async def fetch_movie_info(client, message):
         await message.reply(f"❌ Error fetching movie details: {str(e)}")
 
 
-@bot.on_message(filters.command("dwn"))
-async def download_video(client, message):
-    try:
-        # Check if a URL is provided in the command
-        if len(message.text.split(" ")) < 2:
-            await message.reply("❌ Usage: `/dwn <JioCinema URL>`")
-            return
 
-        video_url = message.text.split(" ")[1]
-        await message.reply(f"📥 Processing your link: {video_url}")
+from playwright.sync_api import sync_playwright
 
-        video_path = download_video_func(video_url)
 
-        if os.path.exists(video_path):
-            await message.reply("✅ Download complete! Sending the video...")
-            try:
-                await bot.send_video(message.chat.id, video_path)
-            except FloodWait as e:
-                await message.reply(f"⚠️ Rate limit exceeded. Waiting for {e.x} seconds.")
-                time.sleep(e.x)
-                await bot.send_video(message.chat.id, video_path)
-        else:
-            await message.reply("❌ Error: The video could not be downloaded.")
 
-    except Exception as e:
-        await message.reply(f"❌ Error: {str(e)}")
+
+# 📥 Function to extract the video URL using Playwright
+def get_video_url(jio_url):
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(jio_url)
+
+        # Wait for the video to load (adjust selector based on the actual page structure)
+        page.wait_for_selector('video#videoElement')  # Update with the actual selector
+        video_url = page.query_selector('video#videoElement').get_attribute('src')
+        
+        browser.close()
+        return video_url
 
 
 # 📥 Function to download video
 def download_video_func(url):
+    # Get the video URL using Playwright
+    video_url = get_video_url(url)
+    
+    if not video_url:
+        raise Exception("❌ Failed to extract video URL.")
+    
     output_path = os.path.join(VIDEO_DIR, "output.mp4")
     print(f"Downloading video to: {output_path}")  # Debug log
 
@@ -123,7 +122,7 @@ def download_video_func(url):
         "--cookies", COOKIES_PATH,  # Ensure the cookies are in Netscape format
         "--socket-timeout", "30",
         "-o", output_path,
-        url
+        video_url
     ]
 
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -145,6 +144,41 @@ def download_video_func(url):
         return output_path
     else:
         raise Exception("❌ Video download failed.")
+
+
+# 🧩 Bot handler for download command
+@bot.on_message(filters.command("dwn"))
+async def download_video(client, message):
+    try:
+        # Check if a URL is provided in the command
+        if len(message.text.split(" ")) < 2:
+            await message.reply("❌ Usage: `/dwn <JioCinema URL>`")
+            return
+
+        video_url = message.text.split(" ")[1]
+        await message.reply(f"📥 Processing your link: {video_url}")
+
+        # Call the function to download the video
+        video_path = download_video_func(video_url)
+
+        if os.path.exists(video_path):
+            await message.reply("✅ Download complete! Sending the video...")
+            try:
+                await bot.send_video(message.chat.id, video_path)
+            except FloodWait as e:
+                await message.reply(f"⚠️ Rate limit exceeded. Waiting for {e.x} seconds.")
+                time.sleep(e.x)
+                await bot.send_video(message.chat.id, video_path)
+        else:
+            await message.reply("❌ Error: The video could not be downloaded.")
+
+    except Exception as e:
+        await message.reply(f"❌ Error: {str(e)}")
+
+
+# Start the bot
+bot.run()
+
 
 
 bot.run()
