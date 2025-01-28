@@ -86,30 +86,28 @@ async def fetch_movie_info(client, message):
 
 
 
-from playwright.sync_api import sync_playwright
 
 
-
-
-# 📥 Function to extract the video URL using Playwright
-def get_video_url(jio_url):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(jio_url)
-
-        # Wait for the video to load (adjust selector based on the actual page structure)
-        page.wait_for_selector('video#videoElement')  # Update with the actual selector
-        video_url = page.query_selector('video#videoElement').get_attribute('src')
+# 🧩 Function to get video URL using Playwright Async API
+async def get_video_url(url):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.goto(url)
         
-        browser.close()
+        # Logic to extract video URL (for example, extracting video URL from a page)
+        # This part needs to be customized based on how video is served
+        video_url = await page.evaluate("document.querySelector('video').src")  # Example of extracting video src
+        
+        await browser.close()
+        
         return video_url
 
 
 # 📥 Function to download video
-def download_video_func(url):
+async def download_video_func(url):
     # Get the video URL using Playwright
-    video_url = get_video_url(url)
+    video_url = await get_video_url(url)
     
     if not video_url:
         raise Exception("❌ Failed to extract video URL.")
@@ -158,8 +156,8 @@ async def download_video(client, message):
         video_url = message.text.split(" ")[1]
         await message.reply(f"📥 Processing your link: {video_url}")
 
-        # Call the function to download the video
-        video_path = download_video_func(video_url)
+        # Call the function to download the video (ensure it's async)
+        video_path = await download_video_func(video_url)
 
         if os.path.exists(video_path):
             await message.reply("✅ Download complete! Sending the video...")
@@ -174,11 +172,6 @@ async def download_video(client, message):
 
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
-
-
-# Start the bot
-bot.run()
-
 
 
 bot.run()
