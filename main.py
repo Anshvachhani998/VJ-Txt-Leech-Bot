@@ -120,9 +120,8 @@ def download_video_func(url):
 
     command = [
         "yt-dlp",
-        "--cookies", COOKIES_PATH,
+        "--cookies", COOKIES_PATH,  # Ensure the cookies are in Netscape format
         "--socket-timeout", "30",
-        "-f", "best",  # Changed to 'best' to ensure you get the best quality available
         "-o", output_path,
         url
     ]
@@ -146,5 +145,6 @@ def download_video_func(url):
         return output_path
     else:
         raise Exception("❌ Video download failed.")
+
 
 bot.run()
