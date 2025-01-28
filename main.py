@@ -2,8 +2,12 @@ import os
 import requests
 import subprocess
 import time
+import asyncio
+import re
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
+from bs4 import BeautifulSoup
+from playwright.async_api import async_playwright
 
 import core as helper
 from utils import progress_bar
@@ -49,9 +53,7 @@ async def check_cookies(client, message):
     except Exception as e:
         await message.reply(f"❌ Error checking cookies: {str(e)}")
 
-from bs4 import BeautifulSoup
-import requests
-
+# Movie Info Command
 @bot.on_message(filters.command("movie_info"))
 async def fetch_movie_info(client, message):
     try:
@@ -74,8 +76,6 @@ async def fetch_movie_info(client, message):
             title = soup.find('meta', {'property': 'og:title'})['content'] if soup.find('meta', {'property': 'og:title'}) else "Unknown Title"
             description = soup.find('meta', {'name': 'description'})['content'] if soup.find('meta', {'name': 'description'}) else "No description available."
             
-            # You can further extract duration or other details similarly.
-            
             await message.reply(f"🎬 **Movie Info:**\n\n📌 Title: {title}\n📝 Description: {description}")
         else:
             await message.reply(f"⚠️ Failed to fetch movie details! Status Code: {response.status_code}")
@@ -84,10 +84,6 @@ async def fetch_movie_info(client, message):
     except Exception as e:
         await message.reply(f"❌ Error fetching movie details: {str(e)}")
 
-from playwright.async_api import async_playwright
-
-
-
 # 🧩 Function to get video URL using Playwright Async API
 async def get_video_url(url):
     async with async_playwright() as p:
@@ -95,17 +91,15 @@ async def get_video_url(url):
         page = await browser.new_page()
         await page.goto(url)
         
-        # Logic to extract video URL (for example, extracting video URL from a page)
-        # This part needs to be customized based on how video is served
-        video_url = await page.evaluate("document.querySelector('video').src")  # Example of extracting video src
+        # Extract video URL (customize based on the page structure)
+        video_url = await page.evaluate("document.querySelector('video').src")
         
         await browser.close()
         
         return video_url
 
-
-# 📥 Function to download video
-async def download_video_func(url):
+# 📥 Function to download video and show progress
+async def download_video_func(url, message):
     # Get the video URL using Playwright
     video_url = await get_video_url(url)
     
@@ -123,11 +117,36 @@ async def download_video_func(url):
         video_url
     ]
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    # Capture and print the process stdout for debugging
-    for stdout_line in iter(process.stdout.readline, b''):
-        print(stdout_line.decode(), end='')
+    # Function to read and parse the progress
+    def read_progress():
+        while True:
+            stdout_line = process.stdout.readline()
+            if stdout_line == '' and process.poll() is not None:
+                break
+            if stdout_line:
+                # Check for progress info in the output and print it
+                match = re.search(r'(\d+(\.\d{1,2})?)%\s*\[.*\]\s*(\d+(\.\d{1,2})?)s / (\d+(\.\d{1,2})?)', stdout_line)
+                if match:
+                    progress_percentage = match.group(1)
+                    eta_time = match.group(5)
+                    print(f"Progress: {progress_percentage}% | ETA: {eta_time}s")
+                    # Send this information to the user
+                    yield progress_percentage, eta_time
+                else:
+                    print(stdout_line.strip(), end='')
+
+    # Create a generator that yields progress updates
+    progress_generator = read_progress()
+
+    # Sending progress updates to the user
+    async def send_progress_updates():
+        for progress_percentage, eta_time in progress_generator:
+            await message.reply(f"📥 Downloading... {progress_percentage}% completed. ETA: {eta_time}s")
+
+    # Start the progress update loop asynchronously
+    asyncio.create_task(send_progress_updates())
 
     stderr_output = process.stderr.read().decode()
     if stderr_output:
@@ -143,7 +162,6 @@ async def download_video_func(url):
     else:
         raise Exception("❌ Video download failed.")
 
-
 # 🧩 Bot handler for download command
 @bot.on_message(filters.command("dwn"))
 async def download_video(client, message):
@@ -157,7 +175,7 @@ async def download_video(client, message):
         await message.reply(f"📥 Processing your link: {video_url}")
 
         # Call the function to download the video (ensure it's async)
-        video_path = await download_video_func(video_url)
+        video_path = await download_video_func(video_url, message)
 
         if os.path.exists(video_path):
             await message.reply("✅ Download complete! Sending the video...")
@@ -172,6 +190,5 @@ async def download_video(client, message):
 
     except Exception as e:
         await message.reply(f"❌ Error: {str(e)}")
-
 
 bot.run()
