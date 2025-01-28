@@ -6,6 +6,7 @@ from pyrogram.errors import FloodWait
 from playwright.async_api import async_playwright
 from pyromod import listen
 import yt_dlp
+import asyncio
 from vars import API_ID, API_HASH, BOT_TOKEN
 
 bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -103,9 +104,9 @@ async def get_video_url(url, message):
 
 
 # 📥 Function to download video with yt-dlp Python API
-def download_video_func(url, message):
+async def download_video_func(url, message):
     # Get the video URL using Playwright
-    video_url = asyncio.run(get_video_url(url, message))
+    video_url = await get_video_url(url, message)
     
     if not video_url:
         raise Exception("❌ Failed to extract video URL.")
@@ -152,7 +153,7 @@ async def download_video(client, message):
         await message.reply(f"📥 Processing your link: {video_url}")
 
         # Call the function to download the video
-        video_path = download_video_func(video_url, message)
+        video_path = await download_video_func(video_url, message)
 
         if os.path.exists(video_path):
             try:
