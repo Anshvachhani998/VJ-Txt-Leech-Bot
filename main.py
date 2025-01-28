@@ -8,6 +8,7 @@ from playwright.async_api import async_playwright
 from pyromod import listen
 import asyncio
 import sys
+from vars import API_ID, API_HASH, BOT_TOKEN
 
 bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
