@@ -5,10 +5,12 @@ from vars import API_ID, API_HASH, BOT_TOKEN
 # ✅ Initialize the bot
 bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# ✅ Direct Proxy (HTTP/HTTPS Proxy)
+# ✅ Only HTTP Proxy (HTTPS requests bhi HTTP proxy ke through jayenge)
+HTTP_PROXY = "http://123.30.154.171:7777"
+
 PROXIES = {
-    "http": "http://123.30.154.171:7777",
-    "https": "http://123.30.154.171:7777",
+    "http": HTTP_PROXY,
+    "https": HTTP_PROXY,  # HTTPS request bhi HTTP proxy ke through jayegi
 }
 
 # ✅ Common Headers for Requests
