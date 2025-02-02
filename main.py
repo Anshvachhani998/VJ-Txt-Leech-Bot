@@ -8,8 +8,8 @@ bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOK
 
 # Proxy Configuration
 PROXIES = {
-    "http": "http://toonrips:xipTsP9H9s@103.171.51.246:50100",
-    "https": "http://toonrips:xipTsP9H9s@103.171.51.246:50100"
+    "http": "http://103.140.142.201:32650",
+    "https": "https://103.140.142.201:32650"
 }
 
 # Common Headers for Requests
