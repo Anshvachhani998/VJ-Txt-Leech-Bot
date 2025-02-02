@@ -15,13 +15,13 @@ PROXIES = {
 
 # ✅ Common Headers for Requests
 HEADERS = {
-    "Origin": "https://www.jiocinema.com",
-    "Referer": "https://www.jiocinema.com/",
+    "Origin": "http://www.jiocinema.com",
+    "Referer": "http://www.jiocinema.com/",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 }
 
 # ✅ API URL for JioCinema Guest Token
-GUEST_TOKEN_URL = "https://auth-jiocinema.voot.com/tokenservice/apis/v4/guest"
+GUEST_TOKEN_URL = "http://auth-jiocinema.voot.com/tokenservice/apis/v4/guest"
 
 # ✅ API Request Data
 GUEST_DATA = {
