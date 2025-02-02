@@ -39,7 +39,7 @@ def fetch_guest_token():
             result = response.json()
             token = result.get("authToken")
             if token:
-                return f"✅ **Guest Token:** `{token}`"
+                return f"✅ **Guest Token:** {token}"
             else:
                 return "❌ **Failed to Fetch Guest Token.**"
         else:
@@ -52,7 +52,7 @@ def get_token(client, message):
     """Handle /gettoken command"""
     message.reply_text("🔄 **Fetching JioCinema Guest Token...**")
     token = fetch_guest_token()
-    message.reply_text(token, parse_mode="markdown2")  # ✅ Corrected
+    message.reply_text(token, parse_mode="html")  # ✅ Corrected
 
     
 
