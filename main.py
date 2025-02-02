@@ -47,13 +47,13 @@ def fetch_guest_token():
     except Exception as e:
         return f"⚠ **Exception:** `{str(e)}`"
 
-# Telegram command to get token
 @bot.on_message(filters.command("gettoken") & filters.private)
 def get_token(client, message):
     """Handle /gettoken command"""
     message.reply_text("🔄 **Fetching JioCinema Guest Token...**")
     token = fetch_guest_token()
-    message.reply_text(token, parse_mode="markdown")
+    message.reply_text(token, parse_mode="markdown2")  # ✅ Corrected
+
     
 
 bot.run()
