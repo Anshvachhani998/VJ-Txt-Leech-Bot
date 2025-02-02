@@ -46,6 +46,8 @@ def fetch_guest_token():
     except requests.exceptions.RequestException as e:
         return f"⚠ Exception: {str(e)}"
 
+import os
+
 # ✅ Command: `/gettoken`
 @bot.on_message(filters.command("gettoken") & filters.private)
 def get_token(client, message):
@@ -53,7 +55,17 @@ def get_token(client, message):
     message.reply_text("🔄 Fetching JioCinema Guest Token...")
 
     token = fetch_guest_token()
-    message.reply_text(f"✅ Guest Token:\n\n{token}")
+
+    if len(token) > 4000:
+        file_path = "guest_token.txt"
+        with open(file_path, "w") as file:
+            file.write(token)  # Token ko file me save karo
+        
+        message.reply_document(file_path)  # File send karo
+        os.remove(file_path)  # File delete kar do (temporary rakho)
+    else:
+        message.reply_text(f"✅ Guest Token:\n\n{token}")
+
 
 # ✅ Command: `/getnewtoken`
 @bot.on_message(filters.command("getnewtoken") & filters.private)
