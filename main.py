@@ -50,12 +50,12 @@ def fetch_guest_token():
 @bot.on_message(filters.command("gettoken") & filters.private)
 def get_token(client, message):
     """Handle /gettoken command"""
-    message.reply_text("🔄 <b>Fetching JioCinema Guest Token...</b>", parse_mode="html")
+    message.reply_text("🔄 Fetching JioCinema Guest Token...")
 
     token = fetch_guest_token()
-    formatted_message = f"✅ <b>Guest Token:</b>\n\n<code>{token}</code>"
+    formatted_message = f"✅ Guest Token:\n\n{token}"
     
-    message.reply_text(formatted_message, parse_mode="html")  # ✅ Corrected
+    message.reply_text(formatted_message)  # ✅ No parse_mode used
 
 
 bot.run()
