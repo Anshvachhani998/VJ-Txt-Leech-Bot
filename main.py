@@ -5,8 +5,11 @@ from vars import API_ID, API_HASH, BOT_TOKEN
 # ✅ Initialize the bot
 bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# ✅ Flask Proxy URL (Tumhara khud ka proxy)
-FLASK_PROXY_URL = "https://vercel-flask-kd504j1bf-sjjs-projects.vercel.app/proxy?url="  
+# ✅ Direct Proxy (HTTP/HTTPS Proxy)
+PROXIES = {
+    "http": "http://123.30.154.171:7777",
+    "https": "http://123.30.154.171:7777",
+}
 
 # ✅ Common Headers for Requests
 HEADERS = {
@@ -29,13 +32,11 @@ GUEST_DATA = {
     "appVersion": "4.1.3"
 }
 
-# ✅ Function to Fetch JioCinema Guest Token using Flask Proxy
+# ✅ Function to Fetch JioCinema Guest Token using Proxy
 def fetch_guest_token():
     try:
-        proxy_url = f"{FLASK_PROXY_URL}{GUEST_TOKEN_URL}"  # Flask proxy ke through request bhej rahe hain
-        
-        response = requests.post(proxy_url, json=GUEST_DATA, headers=HEADERS)
-        
+        response = requests.post(GUEST_TOKEN_URL, json=GUEST_DATA, headers=HEADERS, proxies=PROXIES)
+
         if response.status_code == 200:
             result = response.json()
             token = result.get("authToken")
@@ -65,7 +66,6 @@ def get_token(client, message):
         os.remove(file_path)  # File delete kar do (temporary rakho)
     else:
         message.reply_text(f"✅ Guest Token:\n\n{token}")
-
 
 # ✅ Command: `/getnewtoken`
 @bot.on_message(filters.command("getnewtoken") & filters.private)
