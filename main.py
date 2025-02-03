@@ -5,14 +5,6 @@ from vars import API_ID, API_HASH, BOT_TOKEN
 # ✅ Initialize the bot
 bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# ✅ Only HTTP Proxy (HTTPS requests bhi HTTP proxy ke through jayenge)
-HTTP_PROXY = "http://123.30.154.171:7777"
-
-PROXIES = {
-    "http": HTTP_PROXY,
-    "https": HTTP_PROXY,  # HTTPS request bhi HTTP proxy ke through jayegi
-}
-
 # ✅ Common Headers for Requests
 HEADERS = {
     "Origin": "http://www.jiocinema.com",
@@ -34,10 +26,10 @@ GUEST_DATA = {
     "appVersion": "4.1.3"
 }
 
-# ✅ Function to Fetch JioCinema Guest Token using Proxy
+# ✅ Function to Fetch JioCinema Guest Token (Proxy ke bina)
 def fetch_guest_token():
     try:
-        response = requests.post(GUEST_TOKEN_URL, json=GUEST_DATA, headers=HEADERS, proxies=PROXIES)
+        response = requests.post(GUEST_TOKEN_URL, json=GUEST_DATA, headers=HEADERS)  # ❌ proxies hata diya
 
         if response.status_code == 200:
             result = response.json()
