@@ -7,10 +7,16 @@ bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOK
 
 # ✅ Common Headers for Requests
 HEADERS = {
-    "Origin": "http://www.jiocinema.com",
-    "Referer": "http://www.jiocinema.com/",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Origin": "https://www.jiocinema.com",
+    "Referer": "https://www.jiocinema.com/",
+    "User-Agent": "Mozilla/5.0 (Linux; Android 11; RMX2193) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "keep-alive",
+    "Host": "auth-jiocinema.voot.com",
+    "Content-Type": "application/json"
 }
+
 
 # ✅ API URL for JioCinema Guest Token
 GUEST_TOKEN_URL = "http://auth-jiocinema.voot.com/tokenservice/apis/v4/guest"
