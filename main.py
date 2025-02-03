@@ -22,15 +22,16 @@ HEADERS = {
 GUEST_TOKEN_URL = "http://auth-jiocinema.voot.com/tokenservice/apis/v4/guest"
 
 # ✅ API Request Data
+# ✅ API Request Data (Updated)
 GUEST_DATA = {
     "appName": "RJIL_JioCinema",
-    "deviceType": "fireTV",
+    "deviceType": "mobile",
     "os": "android",
-    "deviceId": "1464251119",
-    "freshLaunch": False,
-    "adId": "1464251119",
-    "appVersion": "4.1.3"
+    "deviceId": "d495f13c-ebb0-4778-8a31-3ccb9e873ca0",
+    "adId": "d495f13c-ebb0-4778-8a31-3ccb9e873ca0",
+    "appVersion": "25.01.13.1-b041218f"
 }
+
 
 # ✅ Function to Fetch JioCinema Guest Token (Proxy ke bina)
 def fetch_guest_token():
