@@ -1,81 +1,75 @@
 import requests
 from pyrogram import Client, filters
 from vars import API_ID, API_HASH, BOT_TOKEN
+import time
+import asyncio
+from pymongo import MongoClient
+from rapidfuzz import process, fuzz
+from tqdm import tqdm
+from pyrogram import Client, filters
 
-# ✅ Initialize the bot
-bot = Client("JioCinemaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# ✅ Common Headers for Requests
-HEADERS = {
-    "Origin": "https://www.jiocinema.com",
-    "Referer": "https://www.jiocinema.com/",
-    "User-Agent": "Mozilla/5.0 (Linux; Android 11; RMX2193) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Connection": "keep-alive",
-    "Host": "auth-jiocinema.voot.com",
-    "Content-Type": "application/json"
-}
+# --- MongoDB Configuration ---
+MONGO_URI = "mongodb+srv://Ansh089:Ansh089@cluster0.y8tpouc.mongodb.net/?retryWrites=true&w=majority"
+DB_NAME = "Web-Auto-files"
+COLLECTION_NAME = "Web files 1"
 
-
-# ✅ API URL for JioCinema Guest Token
-GUEST_TOKEN_URL = "http://auth-jiocinema.voot.com/tokenservice/apis/v4/guest"
-
-# ✅ API Request Data
-# ✅ API Request Data (Updated)
-GUEST_DATA = {
-    "appName": "RJIL_JioCinema",
-    "deviceType": "mobile",
-    "os": "android",
-    "deviceId": "d495f13c-ebb0-4778-8a31-3ccb9e873ca0",
-    "adId": "d495f13c-ebb0-4778-8a31-3ccb9e873ca0",
-    "appVersion": "25.01.13.1-b041218f"
-}
-
-
-# ✅ Function to Fetch JioCinema Guest Token (Proxy ke bina)
-def fetch_guest_token():
-    try:
-        response = requests.post(GUEST_TOKEN_URL, json=GUEST_DATA, headers=HEADERS)  # ❌ proxies hata diya
-
-        if response.status_code == 200:
-            result = response.json()
-            token = result.get("authToken")
-            return token if token else "❌ Failed to fetch token"
-        else:
-            return f"❌ Error: {response.status_code} - {response.text}"
+def fetch_file_names():
+    """Fetch all file names from MongoDB."""
+    client = MongoClient(MONGO_URI)
+    db = client[DB_NAME]
+    collection = db[COLLECTION_NAME]
     
-    except requests.exceptions.RequestException as e:
-        return f"⚠ Exception: {str(e)}"
+    print("Fetching file names from MongoDB...")
+    start_time = time.time()
+    
+    file_names = [doc["file_name"] for doc in collection.find({}, {"file_name": 1})]
+    
+    print(f"Fetched {len(file_names)} files in {time.time() - start_time:.2f} seconds.")
+    return file_names
 
-import os
+def group_similar_movies(file_names, threshold=80):
+    """Group similar movies based on fuzzy matching."""
+    groups = {}
+    
+    print("Processing files for similarity matching...")
+    for file in tqdm(file_names, desc="Matching"):
+        match = process.extractOne(file, groups.keys(), scorer=fuzz.partial_ratio)
+        if match and match[1] > threshold:
+            groups[match[0]].append(file)
+        else:
+            groups[file] = [file]
+    
+    return groups
 
-# ✅ Command: `/gettoken`
-@bot.on_message(filters.command("gettoken") & filters.private)
-def get_token(client, message):
-    """Handle /gettoken command"""
-    message.reply_text("🔄 Fetching JioCinema Guest Token...")
+@bot.on_message(filters.command("fetch"))
+async def fetch_movies(client, message):
+    """Handle the /fetch command."""
+    await message.reply_text("🔍 Fetching movie data from database... Please wait.")
 
-    token = fetch_guest_token()
+    file_names = fetch_file_names()
+    if not file_names:
+        await message.reply_text("⚠️ No files found in the database.")
+        return
+    
+    start_time = time.time()
+    similar_movie_groups = group_similar_movies(file_names)
 
-    if len(token) > 4000:
-        file_path = "guest_token.txt"
-        with open(file_path, "w") as file:
-            file.write(token)  # Token ko file me save karo
-        
-        message.reply_document(file_path)  # File send karo
-        os.remove(file_path)  # File delete kar do (temporary rakho)
+    response = "**📊 Movie Analysis Report**\n"
+    for movie, variations in similar_movie_groups.items():
+        response += f"🎬 **{movie}** - `{len(variations)}` Variations\n"
+
+    response += f"\n✅ **Total Unique Movie Names:** `{len(similar_movie_groups)}`"
+    response += f"\n⏳ **Processing Time:** `{time.time() - start_time:.2f} sec`"
+
+    # Sending results in chunks if message is too long
+    if len(response) > 4096:
+        for chunk in [response[i:i+4000] for i in range(0, len(response), 4000)]:
+            await message.reply_text(chunk)
     else:
-        message.reply_text(f"✅ Guest Token:\n\n{token}")
+        await message.reply_text(response)
 
-# ✅ Command: `/getnewtoken`
-@bot.on_message(filters.command("getnewtoken") & filters.private)
-def get_new_token(client, message):
-    """Handle /getnewtoken command"""
-    message.reply_text("🔄 Generating a new JioCinema Guest Token...")
-
-    token = fetch_guest_token()
-    message.reply_text(f"🔹 New Guest Token:\n\n{token}")
-
-# ✅ Run the bot
+# --- Run the bot ---
+print("🤖 Bot is running...")
 bot.run()
