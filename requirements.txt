@@ -33,3 +33,6 @@ Pillow==9.1.1
 python-aiml
 openai==0.27.0
 spotdl
+pymongo
+rapidfuzz
+tqdm
