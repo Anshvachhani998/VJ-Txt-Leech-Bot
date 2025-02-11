@@ -8,7 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 from vars import API_ID, API_HASH, BOT_TOKEN
 import re
 import os
-import request 
+import requests
+
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 session = requests.Session()
