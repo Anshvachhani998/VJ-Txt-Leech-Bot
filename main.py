@@ -23,25 +23,35 @@ headers = {
     "Origin": "https://www.sonyliv.com"
 }
 
-# Function to Fetch SonyLIV Guest Token
+
+
 def fetch_sonyliv_guest_token():
     url = "https://api.sonyliv.com/edge/v1/authorization/token"
     data = {
-        "client_id": "sonyliv",  # SonyLIV API ke liye client ID
-        "device_id": "guest_124637890",  # Random Guest ID
+        "client_id": "sonyliv",
+        "device_id": "guest_124637890",
         "device_platform": "web",
         "grant_type": "client_credentials"
     }
-    
-    try:
-        response = session.post(url, json=data, headers=headers)
-        if response.status_code == 200:
-            result = response.json()
-            auth_token = result.get("access_token", "❌ Token Not Found")
-            return auth_token
-        return "❌ Request Failed"
-    except requests.RequestException as e:
-        return f"❌ Error: {e}"
+
+    retries = 3
+    for attempt in range(retries):
+        try:
+            response = session.post(url, json=data, headers=headers, timeout=10)
+            if response.status_code == 200:
+                result = response.json()
+                auth_token = result.get("access_token", "❌ Token Not Found")
+                return auth_token
+            else:
+                return f"❌ Error: {response.status_code}"
+        except requests.RequestException as e:
+            if attempt < retries - 1:
+                time.sleep(5)  # Wait before retrying
+                continue
+            return f"❌ Error: {e}"
+
+    return "❌ Request Failed"
+
 
 # Telegram Command to Get SonyLIV Guest Token
 @bot.on_message(filters.command("sonyguesttoken"))
