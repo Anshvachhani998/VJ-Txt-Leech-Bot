@@ -14,42 +14,41 @@ bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 session = requests.Session()
 
-# Common Headers for JioCinema API
+
+
+# SonyLIV API Headers
 headers = {
-    "Origin": "https://www.jiocinema.com",
-    "Referer": "https://www.jiocinema.com/",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+    "Referer": "https://www.sonyliv.com/",
+    "Origin": "https://www.sonyliv.com"
 }
 
-# Function to Fetch Guest Token using Session
-def fetch_guest_token():
-    url = "https://auth-jiocinema.voot.com/tokenservice/apis/v4/guest"
+# Function to Fetch SonyLIV Guest Token
+def fetch_sonyliv_guest_token():
+    url = "https://api.sonyliv.com/edge/v1/authorization/token"
     data = {
-        "appName": "RJIL_JioCinema",
-        "deviceType": "fireTV",
-        "os": "android",
-        "deviceId": "1464251119",
-        "freshLaunch": False,
-        "adId": "1464251119",
-        "appVersion": "4.1.3"
+        "client_id": "sonyliv",  # SonyLIV API ke liye client ID
+        "device_id": "guest_124637890",  # Random Guest ID
+        "device_platform": "web",
+        "grant_type": "client_credentials"
     }
-
+    
     try:
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             result = response.json()
-            return result.get("authToken", "❌ Token Not Found")
+            auth_token = result.get("access_token", "❌ Token Not Found")
+            return auth_token
         return "❌ Request Failed"
     except requests.RequestException as e:
         return f"❌ Error: {e}"
 
-# Telegram Command to Get Guest Token
-@bot.on_message(filters.command("gettoken"))
+# Telegram Command to Get SonyLIV Guest Token
+@bot.on_message(filters.command("sonyguesttoken"))
 async def send_token(client, message):
-    await message.reply_text("🔄 Fetching JioCinema Guest Token...")
-    token = fetch_guest_token()
-    await message.reply_text(f"✅ **Guest Token:**\n`{token}`")
-
+    await message.reply_text("🔄 Fetching SonyLIV Guest Token...")
+    token = fetch_sonyliv_guest_token()
+    await message.reply_text(f"✅ **SonyLIV Guest Token:**\n`{token}`")
 
 
 print("🤖 Bot is running...")
