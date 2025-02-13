@@ -12,54 +12,47 @@ import requests
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-session = requests.Session()
 
+# Terabox API endpoint
+TERABOX_API_URL = "https://teradl-api.dapuntaratya.com/generate_file"
 
+@bot.on_message(filters.command("start"))
+def start(client, message):
+    message.reply("👋 Hello! Send me a Terabox URL using /dl command.\n\nExample:\n`/dl https://terabox.com/s/examplelink`", parse_mode="markdown")
 
-# SonyLIV API Headers
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
-    "Referer": "https://www.sonyliv.com/",
-    "Origin": "https://www.sonyliv.com"
-}
+@bot.on_message(filters.command("dl"))
+def download_file(client, message):
+    args = message.text.split(maxsplit=1)
+    
+    if len(args) < 2:
+        message.reply("❌ Please provide a URL. Example:\n`/dl https://terabox.com/s/examplelink`")
+        return
 
+    url = args[1].strip()
+    message.reply("🔄 Fetching file details, please wait...")
 
+    try:
+        response = requests.post(TERABOX_API_URL, data={"url": url})
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data.get("status") == "success":
+                file_name = data.get("name", "Unknown")
+                file_size = data.get("size", "Unknown")
+                thumbnail = data.get("image", None)
 
-def fetch_sonyliv_guest_token():
-    url = "https://api.sonyliv.com/edge/v1/authorization/token"
-    data = {
-        "client_id": "sonyliv",
-        "device_id": "guest_124637890",
-        "device_platform": "web",
-        "grant_type": "client_credentials"
-    }
+                reply_text = f"📂 **File Name:** `{file_name}`\n📦 **File Size:** `{file_size} MB`"
+                message.reply(reply_text, parse_mode="markdown")
 
-    retries = 3
-    for attempt in range(retries):
-        try:
-            response = session.post(url, json=data, headers=headers, timeout=10)
-            if response.status_code == 200:
-                result = response.json()
-                auth_token = result.get("access_token", "❌ Token Not Found")
-                return auth_token
+                # Agar thumbnail available hai toh send karein
+                if thumbnail:
+                    client.send_photo(message.chat.id, thumbnail, caption="🖼 File Thumbnail")
             else:
-                return f"❌ Error: {response.status_code}"
-        except requests.RequestException as e:
-            if attempt < retries - 1:
-                time.sleep(5)  # Wait before retrying
-                continue
-            return f"❌ Error: {e}"
+                message.reply("❌ Failed to retrieve file details. Please check the URL.")
+        else:
+            message.reply("⚠️ Error fetching details from Terabox API.")
+    
+    except Exception as e:
+        message.reply(f"⚠️ Error: {str(e)}")
 
-    return "❌ Request Failed"
-
-
-# Telegram Command to Get SonyLIV Guest Token
-@bot.on_message(filters.command("sonyguesttoken"))
-async def send_token(client, message):
-    await message.reply_text("🔄 Fetching SonyLIV Guest Token...")
-    token = fetch_sonyliv_guest_token()
-    await message.reply_text(f"✅ **SonyLIV Guest Token:**\n`{token}`")
-
-
-print("🤖 Bot is running...")
 bot.run()
