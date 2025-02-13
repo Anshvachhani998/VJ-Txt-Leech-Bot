@@ -1,24 +1,21 @@
-import time
-import asyncio
-from pymongo import MongoClient
-from rapidfuzz import process, fuzz
-from tqdm import tqdm
-from pyrogram import Client, filters
-from concurrent.futures import ThreadPoolExecutor
-from vars import API_ID, API_HASH, BOT_TOKEN
-import re
-import os
 import requests
+from pyrogram import Client, filters
+from vars import API_ID, API_HASH, BOT_TOKEN
 
+# Pyrogram bot client
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-
 
 # Terabox API endpoint
 TERABOX_API_URL = "https://teradl-api.dapuntaratya.com/generate_file"
 
+# Required Headers
+HEADERS = {
+    "Content-Type": "application/json"
+}
+
 @bot.on_message(filters.command("start"))
 def start(client, message):
-    message.reply("👋 Hello! Send me a Terabox URL using /dl command.\n\nExample:\n`/dl https://terabox.com/s/examplelink`")
+    message.reply("👋 Hello! Send me a Terabox URL using `/dl` command.\n\nExample:\n`/dl https://terabox.com/s/examplelink`")
 
 @bot.on_message(filters.command("dl"))
 def download_file(client, message):
@@ -32,7 +29,10 @@ def download_file(client, message):
     message.reply("🔄 Fetching file details, please wait...")
 
     try:
-        response = requests.post(TERABOX_API_URL, data={"url": url})
+        # Terabox API Request
+        payload = {"url": url}  # "mode" remove kar diya gaya hai
+        response = requests.post(TERABOX_API_URL, headers=HEADERS, json=payload)
+
         if response.status_code == 200:
             data = response.json()
             
@@ -50,9 +50,10 @@ def download_file(client, message):
             else:
                 message.reply("❌ Failed to retrieve file details. Please check the URL.")
         else:
-            message.reply("⚠️ Error fetching details from Terabox API.")
+            message.reply(f"⚠️ API Error {response.status_code}: Unable to fetch details.")
     
     except Exception as e:
         message.reply(f"⚠️ Error: {str(e)}")
 
+# Bot run karne ka function
 bot.run()
