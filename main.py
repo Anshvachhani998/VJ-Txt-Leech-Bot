@@ -18,7 +18,7 @@ TERABOX_API_URL = "https://teradl-api.dapuntaratya.com/generate_file"
 
 @bot.on_message(filters.command("start"))
 def start(client, message):
-    message.reply("👋 Hello! Send me a Terabox URL using /dl command.\n\nExample:\n`/dl https://terabox.com/s/examplelink`", parse_mode="markdown")
+    message.reply("👋 Hello! Send me a Terabox URL using /dl command.\n\nExample:\n`/dl https://terabox.com/s/examplelink`")
 
 @bot.on_message(filters.command("dl"))
 def download_file(client, message):
