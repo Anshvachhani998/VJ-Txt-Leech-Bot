@@ -42,7 +42,7 @@ def download_file(client, message):
                 thumbnail = data.get("image", None)
 
                 reply_text = f"📂 **File Name:** `{file_name}`\n📦 **File Size:** `{file_size} MB`"
-                message.reply(reply_text, parse_mode="markdown")
+                message.reply(reply_text)
 
                 # Agar thumbnail available hai toh send karein
                 if thumbnail:
