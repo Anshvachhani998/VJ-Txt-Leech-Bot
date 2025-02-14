@@ -4,6 +4,8 @@ from requests import Session
 from urllib.parse import urlparse, parse_qs
 from re import findall
 import os
+import requests
+
 
 # Bot Credentials
 from vars import API_ID, API_HASH, BOT_TOKEN, COOKIE
