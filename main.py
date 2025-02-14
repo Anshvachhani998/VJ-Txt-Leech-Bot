@@ -53,63 +53,67 @@ def terabox(url):
         try:
             response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
             
-            # Log the response type and content before trying to parse it
-            logging.debug(f"Response Type: {type(response)}")
+            # Debug log: print raw response text
             logging.debug(f"Response Text: {response.text}")
 
-            # Check if response is JSON
             try:
-                _json = response.json()
-                logging.debug(f"Response JSON: {_json}")
+                _json = response.json()  # Try parsing the response as JSON
+                logging.debug(f"Response JSON: {_json}")  # Log the parsed JSON
             except Exception as e:
                 logging.error(f"Failed to parse JSON: {e}")
-                raise DirectDownloadLinkException(f"ERROR: Failed to parse JSON from response.")
-                
+                raise DirectDownloadLinkException("ERROR: Failed to parse JSON response.")
+
+            if not isinstance(_json, dict):  # Ensure we have a dictionary
+                raise DirectDownloadLinkException(f"ERROR: Unexpected response format: {_json}")
+            
+            # Check if 'errno' is present in the response and it's not an error code
+            if _json.get("errno") not in [0, "0"]:
+                errmsg = _json.get("errmsg", "Something went wrong!")
+                logging.error(f"API Error: {errmsg}")
+                raise DirectDownloadLinkException(f"ERROR: {errmsg}")
+
+            # Process the list of contents (ensure it's a list)
+            content_list = _json.get("list", [])
+            if not isinstance(content_list, list):
+                raise DirectDownloadLinkException(f"ERROR: 'list' in response is not a list or is missing.")
+            
+            for content in content_list:
+                if isinstance(content, dict) and "isdir" in content:
+                    if content["isdir"] in ["1", 1]:  # Check if it's a directory
+                        newFolderPath = path.join(folderPath, content["server_filename"]) if folderPath else content["server_filename"]
+                        __fetch_links(session, content["path"], newFolderPath)
+                    else:
+                        item = {
+                            "url": content.get("dlink", ""),
+                            "filename": content.get("server_filename", ""),
+                            "path": folderPath or content.get("server_filename", ""),
+                        }
+                        details["total_size"] += float(content.get("size", 0))
+                        details["contents"].append(item)
+
         except Exception as e:
-            logging.error(f"Network Error: {e}")
-            raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}")
-
-        if _json.get("errno") not in [0, "0"]:
-            errmsg = _json.get("errmsg", "Something went wrong!")
-            logging.error(f"API Error: {errmsg}")
-            raise DirectDownloadLinkException(f"ERROR: {errmsg}")
-
-        for content in _json.get("list", []):
-            if content["isdir"] in ["1", 1]:
-                newFolderPath = path.join(folderPath, content["server_filename"]) if folderPath else content["server_filename"]
-                __fetch_links(session, content["path"], newFolderPath)
-            else:
-                item = {
-                    "url": content["dlink"],
-                    "filename": content["server_filename"],
-                    "path": folderPath or content["server_filename"],
-                }
-                details["total_size"] += float(content.get("size", 0))
-                details["contents"].append(item)
+            logging.error(f"Error: {e}")
+            raise DirectDownloadLinkException(f"ERROR: {str(e)}")
 
     with Session() as session:
         try:
-            # Fetching the page content
             _res = session.get(url, cookies=COOKIES)
-            logging.debug(f"Response Text: {_res.text}")
-            
-            # Check if response is as expected
+            logging.debug(f"Initial Response Text: {_res.text}")  # Log raw response text
+
+            # Ensure the response is ok
             if not _res.ok:
                 raise DirectDownloadLinkException(f"Error fetching URL: {_res.status_code} - {_res.text}")
             
             # Extracting jsToken
             jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
-            logging.debug(f"jsToken found: {jsToken}")
             if not jsToken:
                 raise DirectDownloadLinkException("ERROR: jsToken not found!")
             jsToken = jsToken[0]
             
             # Extracting shortUrl
             surl = parse_qs(urlparse(_res.url).query).get("surl", [])
-            logging.debug(f"surl found: {surl}")
             if len(surl) > 0:
                 shortUrl = surl[0]
-                logging.debug(f"shortUrl found: {shortUrl}")
             else:
                 raise DirectDownloadLinkException("ERROR: Could not find surl")
             
