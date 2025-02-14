@@ -27,15 +27,16 @@ class DirectDownloadLinkException(Exception):
     pass
 
 COOKIES = {
-    "csrfToken": "nqUTPwVBQj_vtISqp_pro2F5",
-    "browserid": "p4nVrnlkUVKcnbbJHnIClAhSL5uXs01e-0svx0bm7KHLUB6wIVvCUNGLIpU=",
+    "csrfToken": "lnVyVWPt_HL8Q46-i9YhGBwc",
+    "browserid": "aD9mhUe4nb4p9J2Fq0gIsV0HvyEZFNDkthuFfFCZOW6n_SdbFIq7nRA5j38=",
     "lang": "en",
+    "PANWEB": "1",
+    "shareRedirectDomain": "1024tera.com",
     "__bid_n": "1900b9f02442253dfe4207",
     "__stripe_mid": "b85d61d2-4812-4eeb-8e41-b1efb3fa2a002a54d5",
     "ndus": "YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc",
     "ndut_fmt": "26072FC247E0E0E1B7C00BECB22C3D601A075611F93E73FCD62987106604BB96"
 }
-
 
 def get_readable_file_size(size):
     """Converts bytes to human-readable format."""
