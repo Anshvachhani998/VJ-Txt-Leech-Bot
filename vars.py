@@ -8,4 +8,4 @@ API_ID = int(environ.get("API_ID", "22182189"))
 API_HASH = environ.get("API_HASH", "5e7c4088f8e23d0ab61e29ae11960bf5")
 BOT_TOKEN = environ.get("BOT_TOKEN", "7475289810:AAHQzMj22ujePifhWcsWSEEl9vsy6BMnYjc")
 API = environ.get("API", "H")
-COOKIE = "csrfToken=BnQx-ffuJKamkWLrsx3Ksds4; browserid=qEGrcJcpudjTVSp34yywiOK8KGczvjGYTPI6jJMydd7dpoQVUXCzDlp7JFM=; lang=en; __bid_n=18db31bdad1e0ee8094207; __stripe_mid=a300821a-4b38-4e0a-a227-5c27f1b7c54789f06e; __stripe_sid=f7b244b5-18a8-4540-bfa0-222b4acc0bf5eb56ba; ndus=Yb47bKTteHuiwDuAJYscQHtlthgbg2-2R4yRRWFe; ndut_fmt=17DAF2FD0DC6DF723D10EB645D49FD8581EFDCCB4A2823D11359EA0CCE270FBE"  # COOKIE FOR AUTHENTICATION (get from chrome dev tools) ex: "PANWEB=1; csrfToken=; lang=en; TSID=; __bid_n=; _ga=; __stripe_mid=; ndus=; browserid==; ndut_fmt=; _ga_06ZNKL8C2E=" (dont use this)
+COOKIE = "csrfToken=nqUTPwVBQj_vtISqp_pro2F5; browserid=p4nVrnlkUVKcnbbJHnIClAhSL5uXs01e-0svx0bm7KHLUB6wIVvCUNGLIpU=; lang=en; __bid_n=1900b9f02442253dfe4207; __stripe_mid=b85d61d2-4812-4eeb-8e41-b1efb3fa2a002a54d5; ndus=YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc; ndut_fmt=26072FC247E0E0E1B7C00BECB22C3D601A075611F93E73FCD62987106604BB96"
