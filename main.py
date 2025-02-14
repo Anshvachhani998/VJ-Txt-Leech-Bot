@@ -53,6 +53,7 @@ def terabox(url):
         try:
             response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
             _json = response.json()
+            logging.debug(f"Response JSON: {_json}")
         except Exception as e:
             logging.error(f"Network Error: {e}")
             raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}")
@@ -79,6 +80,7 @@ def terabox(url):
         try:
             # Fetching the page content
             _res = session.get(url, cookies=COOKIES)
+            logging.debug(f"Response Text: {_res.text}")
             
             # Check if response is as expected
             if not _res.ok:
@@ -93,6 +95,7 @@ def terabox(url):
             
             # Extracting shortUrl
             surl = parse_qs(urlparse(_res.url).query).get("surl", [])
+            logging.debug(f"surl found: {surl}")
             if len(surl) > 0:
                 shortUrl = surl[0]
                 logging.debug(f"shortUrl found: {shortUrl}")
@@ -107,6 +110,7 @@ def terabox(url):
     file_name = f"[{details['title']}]({url})"
     file_size = get_readable_file_size(details["total_size"])
     return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
+
 
 
 
