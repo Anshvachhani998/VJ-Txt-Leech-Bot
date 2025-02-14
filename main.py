@@ -26,18 +26,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 class DirectDownloadLinkException(Exception):
     pass
 
-COOKIES = {
-    "ndus": "YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc",
-    "csrfToken": "lnVyVWPt_HL8Q46-i9YhGBwc",
-    "browserid": "aD9mhUe4nb4p9J2Fq0gIsV0HvyEZFNDkthuFfFCZOW6n_SdbFIq7nRA5j38=",
-    "lang": "en",
-    "PANWEB": "1",
-    "TSID": "qD574qEbPaUGxFVfFANUYJSB5kZR0ytH",
-    "shareRedirectDomain": "1024tera.com",
-    "__bid_n": "1900b9f02442253dfe4207",
-    "__stripe_mid": "b85d61d2-4812-4eeb-8e41-b1efb3fa2a002a54d5",
-    "ndut_fmt": "26072FC247E0E0E1B7C00BECB22C3D601A075611F93E73FCD62987106604BB96"
-}
+COOKIES = "csrfToken=IBIE5YJHsvqJ5hfy10amPsvU; browserid=ySMpd69WOmpOVcBr8EzVItH__ky9pLg80woRGa9pfYz84x8T0yT5gONXP1g=; lang=en; TSID=AhNUgmZZ4LPb42wLnaq48UqjxmaQyIWJ; __bid_n=194f9a145f6c8074ea4207; _ga=GA1.1.1167242207.1739354886; ndus=Yfszi3CteHuiKo8GYWi0KHQwRCBf3Cybm-JiIY2I; ndut_fmt=CDD95A727FFAF01EA8842D001BBC5CB06A0B69F5D9DDE59F9D8274518871F757; _ga_06ZNKL8C2E=GS1.1.1739354886.1.1.1739355565.57.0.0"
 
 
 def get_readable_file_size(size):
