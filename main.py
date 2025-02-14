@@ -140,7 +140,7 @@ def terabox_cmd(client, message):
     try:
         message.reply("🔄 Fetching download link, please wait...")
         result = terabox(url)
-        print("Done")
+        logging.debug(f"cmd used")
         message.reply(result, disable_web_page_preview=True)
     except Exception as e:
         message.reply(f"❌ **Error:** {str(e)}")
