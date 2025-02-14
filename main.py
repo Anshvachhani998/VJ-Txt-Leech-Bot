@@ -40,6 +40,11 @@ def terabox(url):
     logging.info(f"Fetching data for URL: {url}")
     
     def __fetch_links(session, dir_="", folderPath=""):
+        params = {
+            'app_id': '250528',
+            'jsToken': jsToken,
+            'shorturl': shortUrl
+        }
         logging.debug(f"Fetching links from directory: {dir_}")
         logging.info(f"Fetching data for URL: {url} 222")
         
