@@ -95,9 +95,8 @@ def get_data(url: str):
         "sizebytes": int(file_data["size"])
     }
 
-app = Client("terabox_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-@app.on_message(filters.command("terabox") & filters.private)
+@bot.on_message(filters.command("terabox") & filters.private)
 def terabox_handler(client, message):
     if len(message.command) < 2:
         message.reply_text("Please provide a TeraBox link.")
@@ -119,7 +118,7 @@ def terabox_handler(client, message):
     
     message.reply_text(reply_text, disable_web_page_preview=True)
 
-app.run()
+
 
 
 bot.run()
