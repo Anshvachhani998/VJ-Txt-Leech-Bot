@@ -83,7 +83,7 @@ def terabox(url):
                 raise DirectDownloadLinkException("ERROR: jsToken not found!")
             jsToken = jsToken[0]
             
-            shortUrl = parse_qs(urlparse(_res.url).query).get("surl")
+            shortUrl = parse_qs(urlparse(_res.url).query).get("surl", [None])[0]
             if not shortUrl:
                 raise DirectDownloadLinkException("ERROR: Could not find surl")
             
@@ -95,6 +95,7 @@ def terabox(url):
     file_name = f"[{details['title']}]({url})"
     file_size = get_readable_file_size(details["total_size"])
     return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
+
 
 
 @bot.on_message(filters.command("terabox"))
