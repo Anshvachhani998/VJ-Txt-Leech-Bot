@@ -36,3 +36,4 @@ spotdl
 pymongo
 rapidfuzz
 tqdm
+beautifulsoup4
