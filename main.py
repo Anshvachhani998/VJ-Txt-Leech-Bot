@@ -1,89 +1,84 @@
-import requests
 from pyrogram import Client, filters
 from vars import API_ID, API_HASH, BOT_TOKEN
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-TERABOX_FILE_URL = "https://teradl-api.dapuntaratya.com/generate_file"
-TERABOX_LINK_URL = "https://teradl-api.dapuntaratya.com/generate_link"
+from requests import get, post
+from urllib.parse import urlparse
+import os
 
-HEADERS = {
-    "Content-Type": "application/json"
-}
+class DirectDownloadLinkException(Exception):
+    pass
 
-@bot.on_message(filters.command("start"))
-def start(client, message):
-    message.reply("👋 Send me a Terabox URL using `/dl` command.\n\nExample:\n`/dl https://terabox.com/s/examplelink`")
+def terabox(url, video_quality="HD Video", save_dir="HD_Video"):
+    """Terabox direct link generator"""
 
-@bot.on_message(filters.command("dl"))
-def download_file(client, message):
-    args = message.text.split(maxsplit=1)
-    
-    if len(args) < 2:
-        message.reply("❌ Please provide a URL. Example:\n`/dl https://terabox.com/s/examplelink`")
+    if not ("/s/" in url or "surl=" in url):
+        raise DirectDownloadLinkException("❌ Invalid Terabox URL")
+
+    netloc = urlparse(url).netloc
+    terabox_url = url.replace(netloc, "1024tera.com")
+
+    urls = [
+        "https://ytshorts.savetube.me/api/v1/terabox-downloader",
+        f"https://teraboxvideodownloader.nepcoderdevs.workers.dev/?url={terabox_url}",
+        f"https://terabox.udayscriptsx.workers.dev/?url={terabox_url}",
+        f"https://mavimods.serv00.net/Mavialt.php?url={terabox_url}",
+        f"https://mavimods.serv00.net/Mavitera.php?url={terabox_url}",
+    ]
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Content-Type": "application/json",
+    }
+
+    for base_url in urls:
+        try:
+            response = post(base_url, headers=headers, json={"url": terabox_url}) if "api/v1" in base_url else get(base_url)
+            if response.status_code == 200:
+                break
+        except Exception as e:
+            raise DirectDownloadLinkException(f"❌ Error: {e.__class__.__name__}") from e
+    else:
+        raise DirectDownloadLinkException("❌ Unable to fetch download link")
+
+    data = response.json()
+    details = {"contents": [], "title": "", "total_size": 0}
+
+    for item in data.get("response", []):
+        title = item["title"]
+        resolutions = item.get("resolutions", {})
+        if (zlink := resolutions.get(video_quality)):
+            details["contents"].append({"url": zlink, "filename": title, "path": os.path.join(title, save_dir)})
+        details["title"] = title
+
+    if not details["contents"]:
+        raise DirectDownloadLinkException("❌ No valid download links found")
+
+    return details["contents"][0]["url"] if len(details["contents"]) == 1 else details
+
+@bot.on_message(filters.command("terabox") & filters.text)
+async def terabox_command(client, message):
+    if len(message.command) < 2:
+        await message.reply_text("⚠ Usage: /terabox <terabox_url>")
         return
 
-    url = args[1].strip()
-    message.reply("🔄 Fetching file details, please wait...")
+    url = message.command[1]
+    await message.reply_text("🔄 Fetching download link...")
 
     try:
-        payload = {"url": url}
-        response = requests.post(TERABOX_FILE_URL, headers=HEADERS, json=payload)
-
-        if response.status_code == 200:
-            data = response.json()
-
-            if data.get("status") == "success":
-                file_list = data.get("list", [])
-
-                if file_list and isinstance(file_list, list):
-                    file_info = file_list[0]  # Pehli file ka data
-
-                    file_name = file_info.get("name", "Unknown")
-                    file_size = file_info.get("size", "Unknown")
-                    thumbnail = file_info.get("image", None)
-
-                    # Convert file size to MB
-                    try:
-                        file_size_mb = round(int(file_size) / (1024 * 1024), 2)
-                    except:
-                        file_size_mb = "Unknown"
-
-                    message.reply(f"📂 **File Name:** `{file_name}`\n📦 **File Size:** `{file_size_mb} MB`\n⏳ Generating Download Link...")
-
-                    # Generate Download Link Payload
-                    download_payload = {
-                        "js_token": data.get("js_token"),
-                        "cookie": data.get("cookie"),
-                        "sign": data.get("sign"),
-                        "timestamp": data.get("timestamp"),
-                        "shareid": data.get("shareid"),
-                        "uk": data.get("uk"),
-                        "fs_id": file_info.get("fs_id")
-                    }
-                    link_response = requests.post(TERABOX_LINK_URL, headers=HEADERS, json=download_payload)
-
-                    if link_response.status_code == 200:
-                        link_data = link_response.json()
-
-                        if link_data.get("status") == "success":
-                            download_link = link_data.get("download_link", {}).get("url_1", "No link found")
-                            message.reply(f"✅ **Download Link:** [Click Here]({download_link})")
-                        else:
-                            message.reply("❌ Failed to generate the download link.")
-                    else:
-                        message.reply(f"⚠️ API Error {link_response.status_code}: Unable to generate link.")
-
-                    if thumbnail:
-                        client.send_photo(message.chat.id, thumbnail, caption="🖼 File Thumbnail")
-                else:
-                    message.reply("❌ No files found in the provided URL.")
-            else:
-                message.reply("❌ Failed to retrieve file details. Please check the URL.")
+        download_link = terabox(url)
+        if isinstance(download_link, dict):
+            response_text = f"🎥 **{download_link['title']}**\n\n"
+            for item in download_link["contents"]:
+                response_text += f"🔹 **{item['filename']}**\n🔗 {item['url']}\n\n"
+            await message.reply_text(response_text)
         else:
-            message.reply(f"⚠️ API Error {response.status_code}: Unable to fetch details.")
-
+            await message.reply_text(f"✅ **Download Link:**\n{download_link}")
     except Exception as e:
-        message.reply(f"⚠️ Error: {str(e)}")
+        await message.reply_text(str(e))
+
 
 bot.run()
