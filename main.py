@@ -41,6 +41,7 @@ def terabox(url):
     
     def __fetch_links(session, dir_="", folderPath=""):
         logging.debug(f"Fetching links from directory: {dir_}")
+        logging.info(f"Fetching data for URL: {url} 222")
         
         try:
             response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
