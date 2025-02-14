@@ -7,6 +7,7 @@ from pyrogram.types import Message
 from vars import API_ID, API_HASH, BOT_TOKEN
 
 COOKIES = "csrfToken=IBIE5YJHsvqJ5hfy10amPsvU; browserid=ySMpd69WOmpOVcBr8EzVItH__ky9pLg80woRGa9pfYz84x8T0yT5gONXP1g=; lang=en; TSID=AhNUgmZZ4LPb42wLnaq48UqjxmaQyIWJ; __bid_n=194f9a145f6c8074ea4207; _ga=GA1.1.1167242207.1739354886; ndus=Yfszi3CteHuiKo8GYWi0KHQwRCBf3Cybm-JiIY2I; ndut_fmt=CDD95A727FFAF01EA8842D001BBC5CB06A0B69F5D9DDE59F9D8274518871F757; _ga_06ZNKL8C2E=GS1.1.1739354886.1.1.1739355565.57.0.0"
+COOKIES_DICT = {i.split('=')[0]: i.split('=')[1] for i in COOKIES.split('; ')}
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 logging.basicConfig(level=logging.INFO)
@@ -25,9 +26,9 @@ class TeraboxDownloader:
 
     def extract_tokens(self):
         try:
-            response = self.session.get(self.url, cookies=COOKIES)
+            response = self.session.get(self.url, cookies=COOKIES_DICT)
             logging.debug(f"Initial Response Text: {response.text}")
-            jsToken_match = re.findall(r'window\\.jsToken.*%22(.*)%22', response.text)
+            jsToken_match = re.findall(r'window\.jsToken\s*=\s*\"(.*?)\"', response.text)
             if not jsToken_match:
                 self.err = "ERROR: jsToken not found!"
                 return
@@ -44,13 +45,17 @@ class TeraboxDownloader:
         if not self.jsToken:
             self.err = "ERROR: Missing jsToken"
             return
-        params = {"app_id": "250528", "jsToken": self.jsToken}
+        if not self.shortUrl:
+            self.err = "ERROR: Missing shortUrl"
+            return
+        
+        params = {"app_id": "250528", "jsToken": self.jsToken, "shorturl": self.shortUrl}
         if dir_:
             params["dir"] = dir_
         else:
             params["root"] = "1"
         try:
-            response = self.session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
+            response = self.session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES_DICT)
             self.json = response.json()
         except Exception as e:
             self.err = f"ERROR: {e.__class__.__name__}"
