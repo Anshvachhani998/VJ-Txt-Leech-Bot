@@ -52,44 +52,9 @@ def terabox(url):
             params["root"] = "1"
         try:
             response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
-            
-            # Debug log: print raw response text
-            logging.debug(f"Response Text: {response.text}")
 
-            try:
-                _json = response.json()  # Try parsing the response as JSON
-                logging.debug(f"Response JSON: {_json}")  # Log the parsed JSON
-            except Exception as e:
-                logging.error(f"Failed to parse JSON: {e}")
-                raise DirectDownloadLinkException("ERROR: Failed to parse JSON response.")
-
-            if not isinstance(_json, dict):  # Ensure we have a dictionary
-                raise DirectDownloadLinkException(f"ERROR: Unexpected response format: {_json}")
-            
-            # Check if 'errno' is present in the response and it's not an error code
-            if _json.get("errno") not in [0, "0"]:
-                errmsg = _json.get("errmsg", "Something went wrong!")
-                logging.error(f"API Error: {errmsg}")
-                raise DirectDownloadLinkException(f"ERROR: {errmsg}")
-
-            # Process the list of contents (ensure it's a list)
-            content_list = _json.get("list", [])
-            if not isinstance(content_list, list):
-                raise DirectDownloadLinkException(f"ERROR: 'list' in response is not a list or is missing.")
-            
-            for content in content_list:
-                if isinstance(content, dict) and "isdir" in content:
-                    if content["isdir"] in ["1", 1]:  # Check if it's a directory
-                        newFolderPath = path.join(folderPath, content["server_filename"]) if folderPath else content["server_filename"]
-                        __fetch_links(session, content["path"], newFolderPath)
-                    else:
-                        item = {
-                            "url": content.get("dlink", ""),
-                            "filename": content.get("server_filename", ""),
-                            "path": folderPath or content.get("server_filename", ""),
-                        }
-                        details["total_size"] += float(content.get("size", 0))
-                        details["contents"].append(item)
+            # Send the raw response as it is to see what we get
+            return response.text
 
         except Exception as e:
             logging.error(f"Error: {e}")
@@ -98,33 +63,19 @@ def terabox(url):
     with Session() as session:
         try:
             _res = session.get(url, cookies=COOKIES)
-            logging.debug(f"Initial Response Text: {_res.text}")  # Log raw response text
 
-            # Ensure the response is ok
-            if not _res.ok:
-                raise DirectDownloadLinkException(f"Error fetching URL: {_res.status_code} - {_res.text}")
-            
-            # Extracting jsToken
-            jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
-            if not jsToken:
-                raise DirectDownloadLinkException("ERROR: jsToken not found!")
-            jsToken = jsToken[0]
-            
-            # Extracting shortUrl
-            surl = parse_qs(urlparse(_res.url).query).get("surl", [])
-            if len(surl) > 0:
-                shortUrl = surl[0]
-            else:
-                raise DirectDownloadLinkException("ERROR: Could not find surl")
-            
-            __fetch_links(session)
+            # Send the initial response text as it is
+            return _res.text
+
         except Exception as e:
             logging.error(f"Error: {e}")
             raise DirectDownloadLinkException(f"ERROR: {str(e)}")
 
+    # Return the file name and size info if everything works correctly (just for confirmation)
     file_name = f"[{details['title']}]({url})"
     file_size = get_readable_file_size(details["total_size"])
     return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
+
 
 
 
