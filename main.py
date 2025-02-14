@@ -7,7 +7,9 @@ from pyrogram.types import Message
 from vars import API_ID, API_HASH, BOT_TOKEN
 from requests import Session
 
+# ✅ Cookies ko dictionary me convert karna
 cookies = "csrfToken=IBIE5YJHsvqJ5hfy10amPsvU; browserid=ySMpd69WOmpOVcBr8EzVItH__ky9pLg80woRGa9pfYz84x8T0yT5gONXP1g=; lang=en; TSID=AhNUgmZZ4LPb42wLnaq48UqjxmaQyIWJ"
+COOKIES_DICT = {i.split('=')[0]: i.split('=')[1] for i in cookies.split('; ')}
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +29,7 @@ def terabox(url):
             params['root'] = '1'
 
         try:
-            _json = session.get("https://www.1024tera.com/share/list", params=params, cookies=cookies).json()
+            _json = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES_DICT).json()
         except Exception as e:
             raise Exception(f'ERROR: {e.__class__.__name__}')
         
@@ -39,7 +41,7 @@ def terabox(url):
         
         for content in _json["list"]:
             if content['isdir'] in ['1', 1]:
-                newFolderPath = path.join(folderPath, content['server_filename']) if folderPath else content['server_filename']
+                newFolderPath = folderPath + "/" + content['server_filename'] if folderPath else content['server_filename']
                 __fetch_links(session, content['path'], newFolderPath)
             else:
                 folderPath = folderPath or details['title'] or content['server_filename']
@@ -52,7 +54,7 @@ def terabox(url):
 
     with Session() as session:
         try:
-            _res = session.get(url, cookies=cookies)
+            _res = session.get(url, cookies=COOKIES_DICT)
         except Exception as e:
             raise Exception(f'ERROR: {e.__class__.__name__}')
         
@@ -68,7 +70,7 @@ def terabox(url):
         __fetch_links(session)
 
     file_name = f"[{details['title']}]({url})"
-    file_size = details['total_size']  # Tum chaho to `get_readable_file_size()` function use kar sakte ho
+    file_size = details['total_size']
     return f"┎ **Title:** {file_name}\n┠ **Size:** `{file_size}` bytes\n┖ **Link:** [Link]({details['contents'][0]['url']})"
 
 @bot.on_message(filters.command("terabox"))
