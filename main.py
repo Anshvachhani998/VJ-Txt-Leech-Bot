@@ -4,23 +4,18 @@ from requests import Session
 from urllib.parse import urlparse, parse_qs
 from re import findall
 import os
-import requests
-
+import logging
+from requests import Session
+from pyrogram import Client, filters
+from os import path
 
 # Bot Credentials
 from vars import API_ID, API_HASH, BOT_TOKEN
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-import logging
-from os import path
-from requests import Session
-from urllib.parse import urlparse, parse_qs
-from re import findall
-from pyrogram import Client, filters
-
-
-logging.basicConfig(level=logging.DEBUG)
+# Set logging level to INFO, as you don't need debug-level logs for bot responses
+logging.basicConfig(level=logging.INFO)
 
 
 class DirectDownloadLinkException(Exception):
@@ -53,15 +48,16 @@ def terabox(url):
             params["root"] = "1"
         
         try:
+            # Fetch the list from Terabox API
             response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
 
-            # Log raw response
-            logging.debug(f"Raw Response Text: {response.text}")
+            # Log raw response (for internal use, debugging)
+            logging.info(f"Raw Response Text: {response.text}")
             
             try:
                 if response.headers.get('Content-Type') == 'application/json':
                     _json = response.json()
-                    logging.debug(f"Parsed Response JSON: {_json}")  # Log parsed JSON to debug
+                    logging.info(f"Parsed Response JSON: {_json}")  # Log parsed JSON to debug
                 else:
                     logging.error(f"Expected JSON, but got: {response.text}")
                     raise DirectDownloadLinkException("ERROR: Expected JSON, but got a different format.")
@@ -139,12 +135,12 @@ def terabox_cmd(client, message):
     
     try:
         message.reply("🔄 Fetching download link, please wait...")
+        logging.info(f"Command '/terabox' executed for URL: {url}")  # Info log for command execution
         result = terabox(url)
-        logging.debug(f"cmd used")
         message.reply(result, disable_web_page_preview=True)
     except Exception as e:
+        logging.error(f"Error: {str(e)}")
         message.reply(f"❌ **Error:** {str(e)}")
-
 
 
 bot.run()
