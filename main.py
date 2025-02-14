@@ -13,7 +13,7 @@ bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 class DirectDownloadLinkException(Exception):
     pass
 
-# 🔹 Fresh Cookies (Manually Exported from Browser)
+# 🔹 Load Normal Cookies (Manually Exported from Browser)
 COOKIES = {
     "browserid": "oV3yVUBAotSkMW8ADJymPYDbtqG15hRwCCcrBl3CORYIWatFbhQeOPV6Z_Q=",
     "lang": "en",
@@ -51,9 +51,15 @@ def terabox(url):
         except Exception as e:
             raise DirectDownloadLinkException(f'ERROR: {e.__class__.__name__}')
         if _json['errno'] not in [0, '0']:
-            raise DirectDownloadLinkException(f"ERROR: {_json.get('errmsg', 'Something went wrong!')}")
-        
-        for content in _json.get("list", []):
+            if 'errmsg' in _json:
+                raise DirectDownloadLinkException(f"ERROR: {_json['errmsg']}")
+            else:
+                raise DirectDownloadLinkException('ERROR: Something went wrong!')
+
+        if "list" not in _json:
+            return
+        contents = _json["list"]
+        for content in contents:
             if content['isdir']:
                 newFolderPath = os.path.join(folderPath, content['server_filename']) if folderPath else content['server_filename']
                 __fetch_links(session, content['path'], newFolderPath)
@@ -81,7 +87,10 @@ def terabox(url):
         shortUrl = parse_qs(urlparse(_res.url).query).get('surl')
         if not shortUrl:
             raise DirectDownloadLinkException("ERROR: Could not find surl")
-        __fetch_links(session)
+        try:
+            __fetch_links(session)
+        except Exception as e:
+            raise DirectDownloadLinkException(str(e))
     
     file_name = f"[{details['title']}]({url})"
     file_size = f"{details['total_size'] / (1024**2):.2f} MB"
