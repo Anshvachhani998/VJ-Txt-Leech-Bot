@@ -6,105 +6,120 @@ from re import findall
 import os
 
 # Bot Credentials
-from vars import API_ID, API_HASH, BOT_TOKEN
+from vars import API_ID, API_HASH, BOT_TOKEN, COOKIE
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-class DirectDownloadLinkException(Exception):
-    pass
+from urllib.parse import parse_qs, urlparse
 
-# 🔹 Load Normal Cookies (Manually Exported from Browser)
-COOKIES = {
-    "browserid": "oV3yVUBAotSkMW8ADJymPYDbtqG15hRwCCcrBl3CORYIWatFbhQeOPV6Z_Q=",
-    "lang": "en",
-    "csrfToken": "MhbJrNNFMhTsyWxM1Q1Un3uQ",
-    "__bid_n": "194ff43a22825aa3794207",
-    "__stripe_mid": "28201ffd-32ba-441b-8bf5-546807488230a952c1",
-    "__stripe_sid": "5b094c70-f997-4aa7-803c-103c17dad0d5e49f60",
-    "ndut_fmt": "8148B0F5C88AA31BBA3E58EDC7866849E67F9ADF05CC1CEF9FA47C0FB9454387",
-    "ndus": "YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc"
-}
 
-# 🔹 Headers to Avoid Verification
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.1024tera.com/",
-    "Connection": "keep-alive"
-}
+def check_url_patterns(url):
+    patterns = [
+        r"ww\.mirrobox\.com", r"www\.nephobox\.com", r"freeterabox\.com",
+        r"www\.freeterabox\.com", r"1024tera\.com", r"4funbox\.co",
+        r"www\.4funbox\.com", r"mirrobox\.com", r"nephobox\.com",
+        r"terabox\.app", r"terabox\.com", r"www\.terabox\.ap",
+        r"www\.terabox\.com", r"www\.1024tera\.co", r"www\.momerybox\.com",
+        r"teraboxapp\.com", r"momerybox\.com", r"tibibox\.com",
+        r"www\.tibibox\.com", r"www\.teraboxapp\.com"
+    ]
+    return any(re.search(pattern, url) for pattern in patterns)
 
-def terabox(url):
-    details = {'contents': [], 'title': '', 'total_size': 0}
+def get_urls_from_string(string: str) -> list[str]:
+    pattern = r"(https?://\S+)"
+    urls = re.findall(pattern, string)
+    return [url for url in urls if check_url_patterns(url)] or []
 
-    def __fetch_links(session, dir_='', folderPath=''):
-        params = {
-            'app_id': '250528',
-            'jsToken': jsToken,
-            'shorturl': shortUrl
-        }
-        if dir_:
-            params['dir'] = dir_
-        else:
-            params['root'] = '1'
-        try:
-            _json = session.get("https://www.1024tera.com/share/list", params=params, headers=HEADERS, cookies=COOKIES).json()
-        except Exception as e:
-            raise DirectDownloadLinkException(f'ERROR: {e.__class__.__name__}')
-        if _json['errno'] not in [0, '0']:
-            if 'errmsg' in _json:
-                raise DirectDownloadLinkException(f"ERROR: {_json['errmsg']}")
-            else:
-                raise DirectDownloadLinkException('ERROR: Something went wrong!')
-
-        if "list" not in _json:
-            return
-        contents = _json["list"]
-        for content in contents:
-            if content['isdir']:
-                newFolderPath = os.path.join(folderPath, content['server_filename']) if folderPath else content['server_filename']
-                __fetch_links(session, content['path'], newFolderPath)
-            else:
-                item = {
-                    'url': content['dlink'],
-                    'filename': content['server_filename'],
-                    'path': folderPath,
-                }
-                details['total_size'] += content.get("size", 0)
-                details['contents'].append(item)
-
-    with Session() as session:
-        session.cookies.update(COOKIES)
-        _res = session.get(url, headers=HEADERS, cookies=COOKIES)
-
-        # 🚨 Check if verification is required
-        if "verify" in _res.text.lower():
-            raise DirectDownloadLinkException("⚠️ ERROR: Terabox is asking for verification! Try updating cookies.")
-
-        jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
-        if not jsToken:
-            raise DirectDownloadLinkException('ERROR: jsToken not found!')
-        jsToken = jsToken[0]
-        shortUrl = parse_qs(urlparse(_res.url).query).get('surl')
-        if not shortUrl:
-            raise DirectDownloadLinkException("ERROR: Could not find surl")
-        try:
-            __fetch_links(session)
-        except Exception as e:
-            raise DirectDownloadLinkException(str(e))
-    
-    file_name = f"[{details['title']}]({url})"
-    file_size = f"{details['total_size'] / (1024**2):.2f} MB"
-    return f"**Title:** {file_name}\n**Size:** `{file_size}`\n**Link:** [Download]({details['contents'][0]['url']})"
-
-@bot.on_message(filters.command("terabox") & filters.private)
-def terabox_cmd(client: Client, message: Message):
-    if len(message.command) < 2:
-        return message.reply_text("Please provide a Terabox link!")
-    url = message.command[1]
+def find_between(data: str, first: str, last: str) -> str | None:
     try:
-        response = terabox(url)
-        message.reply_text(response, disable_web_page_preview=True)
-    except DirectDownloadLinkException as e:
-        message.reply_text(str(e))
+        start = data.index(first) + len(first)
+        end = data.index(last, start)
+        return data[start:end]
+    except ValueError:
+        return None
+
+def extract_surl_from_url(url: str) -> str | None:
+    parsed_url = urlparse(url)
+    query_params = parse_qs(parsed_url.query)
+    return query_params.get("surl", [None])[0]
+
+def get_data(url: str):
+    r = requests.Session()
+    headersList = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
+        "Connection": "keep-alive",
+        "Cookie": COOKIE,
+        "DNT": "1",
+        "Host": "www.terabox.app",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+    }
+    
+    response = r.get(url, headers=headersList)
+    response = r.get(response.url, headers=headersList)
+    logid = find_between(response.text, "dp-logid=", "&")
+    jsToken = find_between(response.text, "fn%28%22", "%22%29")
+    bdstoken = find_between(response.text, 'bdstoken":"', '"')
+    shorturl = extract_surl_from_url(response.url)
+    if not shorturl:
+        return False
+    
+    reqUrl = f"https://www.terabox.app/share/list?app_id=250528&web=1&channel=0&jsToken={jsToken}&dp-logid={logid}&page=1&num=20&by=name&order=asc&site_referer=&shorturl={shorturl}&root=1"
+    response = r.get(reqUrl, headers=headersList)
+    
+    if response.status_code != 200:
+        return False
+    
+    r_j = response.json()
+    if r_j.get("errno") or not r_j.get("list"):
+        return False
+    
+    file_data = r_j["list"][0]
+    direct_link = r.head(file_data["dlink"], headers=headersList).headers.get("location")
+    
+    return {
+        "file_name": file_data["server_filename"],
+        "link": file_data["dlink"],
+        "direct_link": direct_link,
+        "thumb": file_data["thumbs"]["url3"],
+        "size": int(file_data["size"]),
+        "sizebytes": int(file_data["size"])
+    }
+
+app = Client("terabox_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+@app.on_message(filters.command("terabox") & filters.private)
+def terabox_handler(client, message):
+    if len(message.command) < 2:
+        message.reply_text("Please provide a TeraBox link.")
+        return
+    
+    url = message.command[1]
+    data = get_data(url)
+    
+    if not data:
+        message.reply_text("Invalid or unsupported TeraBox link.")
+        return
+    
+    reply_text = (
+        f"📂 **File Name:** {data['file_name']}\n"
+        f"📦 **Size:** {data['size']}\n"
+        f"🔗 [Download Link]({data['link']})\n"
+        f"🚀 [Direct Link]({data['direct_link']})"
+    )
+    
+    message.reply_text(reply_text, disable_web_page_preview=True)
+
+app.run()
+
 
 bot.run()
