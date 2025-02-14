@@ -8,7 +8,7 @@ import requests
 
 
 # Bot Credentials
-from vars import API_ID, API_HASH, BOT_TOKEN, COOKIE
+from vars import API_ID, API_HASH, BOT_TOKEN
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
@@ -26,12 +26,16 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 class DirectDownloadLinkException(Exception):
     pass
 
-# Manually Add Cookies Here
 COOKIES = {
-    "BDUSS": "your_bduss_token_here",
-    "STOKEN": "your_stoken_here",
-    # Add other required cookies
+    "csrfToken": "nqUTPwVBQj_vtISqp_pro2F5",
+    "browserid": "p4nVrnlkUVKcnbbJHnIClAhSL5uXs01e-0svx0bm7KHLUB6wIVvCUNGLIpU=",
+    "lang": "en",
+    "__bid_n": "1900b9f02442253dfe4207",
+    "__stripe_mid": "b85d61d2-4812-4eeb-8e41-b1efb3fa2a002a54d5",
+    "ndus": "YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc",
+    "ndut_fmt": "26072FC247E0E0E1B7C00BECB22C3D601A075611F93E73FCD62987106604BB96"
 }
+
 
 def get_readable_file_size(size):
     """Converts bytes to human-readable format."""
