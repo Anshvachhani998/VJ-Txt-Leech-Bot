@@ -52,8 +52,19 @@ def terabox(url):
             params["root"] = "1"
         try:
             response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
-            _json = response.json()
-            logging.debug(f"Response JSON: {_json}")
+            
+            # Log the response type and content before trying to parse it
+            logging.debug(f"Response Type: {type(response)}")
+            logging.debug(f"Response Text: {response.text}")
+
+            # Check if response is JSON
+            try:
+                _json = response.json()
+                logging.debug(f"Response JSON: {_json}")
+            except Exception as e:
+                logging.error(f"Failed to parse JSON: {e}")
+                raise DirectDownloadLinkException(f"ERROR: Failed to parse JSON from response.")
+                
         except Exception as e:
             logging.error(f"Network Error: {e}")
             raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}")
@@ -110,7 +121,6 @@ def terabox(url):
     file_name = f"[{details['title']}]({url})"
     file_size = get_readable_file_size(details["total_size"])
     return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
-
 
 
 
