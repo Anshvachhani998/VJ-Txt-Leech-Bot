@@ -3,33 +3,31 @@ from vars import API_ID, API_HASH, BOT_TOKEN
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-from urllib.parse import urlparse
-
-from re import findall
-from pyrogram import Client, filters
-from pyrogram.types import Message
-from requests import Session
 from urllib.parse import urlparse, parse_qs
-from http.cookiejar import MozillaCookieJar
+from re import findall
+from requests import Session
+from pyrogram.types import Message
 import os
-
 
 
 class DirectDownloadLinkException(Exception):
     pass
 
+# ✅ Normal Cookies (Direct Dictionary)
+COOKIES = {
+    "browserid": "oV3yVUBAotSkMW8ADJymPYDbtqG15hRwCCcrBl3CORYIWatFbhQeOPV6Z_Q=",
+    "lang": "en",
+    "csrfToken": "MhbJrNNFMhTsyWxM1Q1Un3uQ",
+    "__bid_n": "194ff43a22825aa3794207",
+    "__stripe_mid": "28201ffd-32ba-441b-8bf5-546807488230a952c1",
+    "__stripe_sid": "5b094c70-f997-4aa7-803c-103c17dad0d5e49f60",
+    "ndut_fmt": "8148B0F5C88AA31BBA3E58EDC7866849E67F9ADF05CC1CEF9FA47C0FB9454387",
+    "ndus": "YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc"
+}
+
 def terabox(url):
-    if not os.path.isfile('cookies.txt'):
-        raise DirectDownloadLinkException("cookies.txt not found")
-    try:
-        jar = MozillaCookieJar('cookies.txt')
-        jar.load()
-    except Exception as e:
-        raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}") from e
-    
-    cookies = {cookie.name: cookie.value for cookie in jar}
     details = {'contents':[], 'title': '', 'total_size': 0}
-    
+
     def __fetch_links(session, dir_='', folderPath=''):
         params = {
             'app_id': '250528',
@@ -41,7 +39,7 @@ def terabox(url):
         else:
             params['root'] = '1'
         try:
-            _json = session.get("https://www.1024tera.com/share/list", params=params, cookies=cookies).json()
+            _json = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES).json()
         except Exception as e:
             raise DirectDownloadLinkException(f'ERROR: {e.__class__.__name__}')
         if _json['errno'] not in [0, '0']:
@@ -59,9 +57,9 @@ def terabox(url):
                 }
                 details['total_size'] += content.get("size", 0)
                 details['contents'].append(item)
-    
+
     with Session() as session:
-        _res = session.get(url, cookies=cookies)
+        _res = session.get(url, cookies=COOKIES)
         jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
         if not jsToken:
             raise DirectDownloadLinkException('ERROR: jsToken not found!')
@@ -85,7 +83,5 @@ def terabox_cmd(client: Client, message: Message):
         message.reply_text(response, disable_web_page_preview=True)
     except DirectDownloadLinkException as e:
         message.reply_text(str(e))
-
-
 
 bot.run()
