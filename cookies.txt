@@ -9,4 +9,4 @@ www.1024tera.com    FALSE    /    FALSE    0    lang    en
 .1024tera.com    TRUE    /    FALSE    0    __stripe_mid    28201ffd-32ba-441b-8bf5-546807488230a952c1
 .1024tera.com    TRUE    /    FALSE    0    __stripe_sid    5b094c70-f997-4aa7-803c-103c17dad0d5e49f60
 .1024tera.com    TRUE    /    FALSE    0    ndut_fmt    8148B0F5C88AA31BBA3E58EDC7866849E67F9ADF05CC1CEF9FA47C0FB9454387
-.1024tera.com    TRUE    /    TRUE    0    ndus    YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc
+.1024tera.com    TRUE    /    TRUE    1732544226    ndus    YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc
