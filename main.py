@@ -1,138 +1,79 @@
+import logging
+import requests
+import re
+from urllib.parse import urlparse, parse_qs
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from requests import Session
-from urllib.parse import urlparse, parse_qs
-from re import findall
-import os
-import logging
-from requests import Session
-from pyrogram import Client, filters
-from os import path
-
-# Bot Credentials
 from vars import API_ID, API_HASH, BOT_TOKEN
-
-bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-
-# Set logging level to INFO, as you don't need debug-level logs for bot responses
-logging.basicConfig(level=logging.INFO)
-
-
-class DirectDownloadLinkException(Exception):
-    pass
 
 COOKIES = "csrfToken=IBIE5YJHsvqJ5hfy10amPsvU; browserid=ySMpd69WOmpOVcBr8EzVItH__ky9pLg80woRGa9pfYz84x8T0yT5gONXP1g=; lang=en; TSID=AhNUgmZZ4LPb42wLnaq48UqjxmaQyIWJ; __bid_n=194f9a145f6c8074ea4207; _ga=GA1.1.1167242207.1739354886; ndus=Yfszi3CteHuiKo8GYWi0KHQwRCBf3Cybm-JiIY2I; ndut_fmt=CDD95A727FFAF01EA8842D001BBC5CB06A0B69F5D9DDE59F9D8274518871F757; _ga_06ZNKL8C2E=GS1.1.1739354886.1.1.1739355565.57.0.0"
 
+bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+logging.basicConfig(level=logging.INFO)
 
-def get_readable_file_size(size):
-    """Converts bytes to human-readable format."""
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if size < 1024:
-            return f"{size:.2f} {unit}"
-        size /= 1024
-    return f"{size:.2f} PB"
+class TeraboxDownloader:
+    def __init__(self, url):
+        self.url = url
+        self.session = requests.Session()
+        self.jsToken = None
+        self.shortUrl = None
+        self.err = None
+        self.errno = None
+        self.json = None
+        self.details = {"contents": [], "title": "", "total_size": 0}
+        self.extract_tokens()
 
-
-
-def terabox(url):
-    details = {"contents": [], "title": "", "total_size": 0}
-    
-    logging.info(f"Fetching data for URL: {url}")
-    
-    def __fetch_links(session, dir_="", folderPath=""):
-        params = {
-            'app_id': '250528',
-            'jsToken': jsToken,
-            'shorturl': shortUrl
-        }
-        logging.debug(f"Fetching links from directory: {dir_}")
-        logging.info(f"Fetching data for URL: {url} 222")
-        
+    def extract_tokens(self):
         try:
-            response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
-            logging.debug(f"Raw Response Text: {response.text}")
-            
-            try:
-                if response.headers.get('Content-Type') == 'application/json':
-                    _json = response.json()
-                    logging.debug(f"Parsed Response JSON: {_json}")
-                else:
-                    logging.error(f"Expected JSON, but got: {response.text}")
-                    raise DirectDownloadLinkException("ERROR: Expected JSON, but got a different format.")
-                
-                if "list" in _json:
-                    content_list = _json["list"]
-                    for content in content_list:
-                        if isinstance(content, dict) and "isdir" in content:
-                            logging.debug(f"Processing content: {content}")
-                            if content["isdir"] in ["1", 1]:
-                                newFolderPath = path.join(folderPath, content["server_filename"]) if folderPath else content["server_filename"]
-                                __fetch_links(session, content["path"], newFolderPath)
-                            else:
-                                item = {
-                                    "url": content.get("dlink", ""),
-                                    "filename": content.get("server_filename", ""),
-                                    "path": folderPath or content.get("server_filename", ""),
-                                }
-                                details["total_size"] += float(content.get("size", 0))
-                                details["contents"].append(item)
-            except Exception as e:
-                logging.error(f"Error processing response: {e}")
-                raise DirectDownloadLinkException(f"ERROR: Failed to parse JSON response.")
-        
-        except Exception as e:
-            logging.error(f"Error in fetching links: {e}")
-            raise DirectDownloadLinkException(f"ERROR: {str(e)}")
-
-    with Session() as session:
-        try:
-            _res = session.get(url, cookies=COOKIES)
-            logging.debug(f"Initial Response Text: {_res.text}")
-            
-            # Extracting jsToken and shortUrl with logging
-            logging.info("Extracting jsToken and shortUrl")
-            jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
-            if not jsToken:
-                logging.error("ERROR: jsToken not found!")
-                raise DirectDownloadLinkException("ERROR: jsToken not found!")
-            jsToken = jsToken[0]
-            
-            surl = parse_qs(urlparse(_res.url).query).get("surl", [])
-            if len(surl) > 0:
-                shortUrl = surl[0]
+            response = self.session.get(self.url, cookies=COOKIES)
+            logging.debug(f"Initial Response Text: {response.text}")
+            jsToken_match = re.findall(r'window\\.jsToken.*%22(.*)%22', response.text)
+            if not jsToken_match:
+                self.err = "ERROR: jsToken not found!"
+                return
+            self.jsToken = jsToken_match[0]
+            surl = parse_qs(urlparse(response.url).query).get("surl", [])
+            if surl:
+                self.shortUrl = surl[0]
             else:
-                logging.error("ERROR: Could not find surl")
-                raise DirectDownloadLinkException("ERROR: Could not find surl")
-            
-            logging.info("Fetching download links...")
-            __fetch_links(session)
+                self.err = "ERROR: Could not find surl"
         except Exception as e:
-            logging.error(f"Error: {e}")
-            raise DirectDownloadLinkException(f"ERROR: {str(e)}")
+            self.err = f"ERROR: {str(e)}"
 
-    logging.info("Processing complete")
-    file_name = f"[{details['title']}]({url})"
-    file_size = get_readable_file_size(details["total_size"])
-    return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
+    def fetch_links(self, dir_="", folderPath=""):
+        if not self.jsToken:
+            self.err = "ERROR: Missing jsToken"
+            return
+        params = {"app_id": "250528", "jsToken": self.jsToken}
+        if dir_:
+            params["dir"] = dir_
+        else:
+            params["root"] = "1"
+        try:
+            response = self.session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
+            self.json = response.json()
+        except Exception as e:
+            self.err = f"ERROR: {e.__class__.__name__}"
+            return
+        if self.json.get("errno") not in [0, "0"]:
+            self.err = self.json.get("errmsg", "Unknown error")
+            self.errno = self.json["errno"]
 
-
+    def get_result(self):
+        if self.err:
+            return f"❌ {self.err}"
+        return f"✅ Fetched links successfully: {self.json}"
 
 @bot.on_message(filters.command("terabox"))
-def terabox_cmd(client, message):
+def terabox_cmd(client, message: Message):
     if len(message.command) < 2:
         message.reply("❌ **Error:** Please provide a Terabox link.\n\n**Usage:** `/terabox <url>`")
         return
-
     url = message.command[1]
-    
-    try:
-        message.reply("🔄 Fetching download link, please wait...")
-        logging.info(f"Command '/terabox' executed for URL: {url}")  # Info log for command execution
-        result = terabox(url)
-        message.reply(result, disable_web_page_preview=True)
-    except Exception as e:
-        logging.error(f"Error: {str(e)}")
-        message.reply(f"❌ **Error:** {str(e)}")
-
+    message.reply("🔄 Fetching download link, please wait...")
+    tb = TeraboxDownloader(url)
+    tb.fetch_links()
+    result = tb.get_result()
+    message.reply(result, disable_web_page_preview=True)
 
 bot.run()
