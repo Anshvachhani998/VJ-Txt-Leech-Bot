@@ -77,24 +77,35 @@ def terabox(url):
 
     with Session() as session:
         try:
+            # Fetching the page content
             _res = session.get(url, cookies=COOKIES)
+            
+            # Check if response is as expected
+            if not _res.ok:
+                raise DirectDownloadLinkException(f"Error fetching URL: {_res.status_code} - {_res.text}")
+            
+            # Extracting jsToken
             jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
+            logging.debug(f"jsToken found: {jsToken}")
             if not jsToken:
                 raise DirectDownloadLinkException("ERROR: jsToken not found!")
             jsToken = jsToken[0]
             
+            # Extracting shortUrl
             shortUrl = parse_qs(urlparse(_res.url).query).get("surl", [None])[0]
+            logging.debug(f"shortUrl found: {shortUrl}")
             if not shortUrl:
                 raise DirectDownloadLinkException("ERROR: Could not find surl")
             
             __fetch_links(session)
         except Exception as e:
             logging.error(f"Error: {e}")
-            raise DirectDownloadLinkException(e)
+            raise DirectDownloadLinkException(f"ERROR: {str(e)}")
 
     file_name = f"[{details['title']}]({url})"
     file_size = get_readable_file_size(details["total_size"])
     return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
+
 
 
 
