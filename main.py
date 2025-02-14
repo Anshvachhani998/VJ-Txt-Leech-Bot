@@ -20,8 +20,8 @@ from re import findall
 from pyrogram import Client, filters
 
 
-# Logging setup
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 class DirectDownloadLinkException(Exception):
     pass
