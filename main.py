@@ -12,114 +12,109 @@ from vars import API_ID, API_HASH, BOT_TOKEN, COOKIE
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-from urllib.parse import parse_qs, urlparse
+import logging
+from os import path
+from requests import Session
+from urllib.parse import urlparse, parse_qs
+from re import findall
+from pyrogram import Client, filters
 
 
-def check_url_patterns(url):
-    patterns = [
-        r"ww\.mirrobox\.com", r"www\.nephobox\.com", r"freeterabox\.com",
-        r"www\.freeterabox\.com", r"1024tera\.com", r"4funbox\.co",
-        r"www\.4funbox\.com", r"mirrobox\.com", r"nephobox\.com",
-        r"terabox\.app", r"terabox\.com", r"www\.terabox\.ap",
-        r"www\.terabox\.com", r"www\.1024tera\.co", r"www\.momerybox\.com",
-        r"teraboxapp\.com", r"momerybox\.com", r"tibibox\.com",
-        r"www\.tibibox\.com", r"www\.teraboxapp\.com"
-    ]
-    return any(re.search(pattern, url) for pattern in patterns)
+# Logging setup
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-def get_urls_from_string(string: str) -> list[str]:
-    pattern = r"(https?://\S+)"
-    urls = re.findall(pattern, string)
-    return [url for url in urls if check_url_patterns(url)] or []
+class DirectDownloadLinkException(Exception):
+    pass
 
-def find_between(data: str, first: str, last: str) -> str | None:
-    try:
-        start = data.index(first) + len(first)
-        end = data.index(last, start)
-        return data[start:end]
-    except ValueError:
-        return None
+# Manually Add Cookies Here
+COOKIES = {
+    "BDUSS": "your_bduss_token_here",
+    "STOKEN": "your_stoken_here",
+    # Add other required cookies
+}
 
-def extract_surl_from_url(url: str) -> str | None:
-    parsed_url = urlparse(url)
-    query_params = parse_qs(parsed_url.query)
-    return query_params.get("surl", [None])[0]
+def get_readable_file_size(size):
+    """Converts bytes to human-readable format."""
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return f"{size:.2f} PB"
 
-def get_data(url: str):
-    r = requests.Session()
-    headersList = {
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
-        "Connection": "keep-alive",
-        "Cookie": COOKIE,
-        "DNT": "1",
-        "Host": "www.terabox.app",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Upgrade-Insecure-Requests": "1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-        "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-    }
+def terabox(url):
+    details = {"contents": [], "title": "", "total_size": 0}
     
-    response = r.get(url, headers=headersList)
-    response = r.get(response.url, headers=headersList)
-    logid = find_between(response.text, "dp-logid=", "&")
-    jsToken = find_between(response.text, "fn%28%22", "%22%29")
-    bdstoken = find_between(response.text, 'bdstoken":"', '"')
-    shorturl = extract_surl_from_url(response.url)
-    if not shorturl:
-        return False
-    
-    reqUrl = f"https://www.terabox.app/share/list?app_id=250528&web=1&channel=0&jsToken={jsToken}&dp-logid={logid}&page=1&num=20&by=name&order=asc&site_referer=&shorturl={shorturl}&root=1"
-    response = r.get(reqUrl, headers=headersList)
-    
-    if response.status_code != 200:
-        return False
-    
-    r_j = response.json()
-    if r_j.get("errno") or not r_j.get("list"):
-        return False
-    
-    file_data = r_j["list"][0]
-    direct_link = r.head(file_data["dlink"], headers=headersList).headers.get("location")
-    
-    return {
-        "file_name": file_data["server_filename"],
-        "link": file_data["dlink"],
-        "direct_link": direct_link,
-        "thumb": file_data["thumbs"]["url3"],
-        "size": int(file_data["size"]),
-        "sizebytes": int(file_data["size"])
-    }
+    def __fetch_links(session, dir_="", folderPath=""):
+        params = {
+            "app_id": "250528",
+            "jsToken": jsToken,
+            "shorturl": shortUrl,
+        }
+        if dir_:
+            params["dir"] = dir_
+        else:
+            params["root"] = "1"
+        try:
+            response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
+            _json = response.json()
+        except Exception as e:
+            logging.error(f"Network Error: {e}")
+            raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}")
+
+        if _json.get("errno") not in [0, "0"]:
+            errmsg = _json.get("errmsg", "Something went wrong!")
+            logging.error(f"API Error: {errmsg}")
+            raise DirectDownloadLinkException(f"ERROR: {errmsg}")
+
+        for content in _json.get("list", []):
+            if content["isdir"] in ["1", 1]:
+                newFolderPath = path.join(folderPath, content["server_filename"]) if folderPath else content["server_filename"]
+                __fetch_links(session, content["path"], newFolderPath)
+            else:
+                item = {
+                    "url": content["dlink"],
+                    "filename": content["server_filename"],
+                    "path": folderPath or content["server_filename"],
+                }
+                details["total_size"] += float(content.get("size", 0))
+                details["contents"].append(item)
+
+    with Session() as session:
+        try:
+            _res = session.get(url, cookies=COOKIES)
+            jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
+            if not jsToken:
+                raise DirectDownloadLinkException("ERROR: jsToken not found!")
+            jsToken = jsToken[0]
+            
+            shortUrl = parse_qs(urlparse(_res.url).query).get("surl")
+            if not shortUrl:
+                raise DirectDownloadLinkException("ERROR: Could not find surl")
+            
+            __fetch_links(session)
+        except Exception as e:
+            logging.error(f"Error: {e}")
+            raise DirectDownloadLinkException(e)
+
+    file_name = f"[{details['title']}]({url})"
+    file_size = get_readable_file_size(details["total_size"])
+    return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
 
 
-@bot.on_message(filters.command("terabox") & filters.private)
-def terabox_handler(client, message):
+@bot.on_message(filters.command("terabox"))
+def terabox_cmd(client, message):
     if len(message.command) < 2:
-        message.reply_text("Please provide a TeraBox link.")
+        message.reply("❌ **Error:** Please provide a Terabox link.\n\n**Usage:** `/terabox <url>`")
         return
-    
-    url = message.command[1]
-    data = get_data(url)
-    
-    if not data:
-        message.reply_text("Invalid or unsupported TeraBox link.")
-        return
-    
-    reply_text = (
-        f"📂 **File Name:** {data['file_name']}\n"
-        f"📦 **Size:** {data['size']}\n"
-        f"🔗 [Download Link]({data['link']})\n"
-        f"🚀 [Direct Link]({data['direct_link']})"
-    )
-    
-    message.reply_text(reply_text, disable_web_page_preview=True)
 
+    url = message.command[1]
+    
+    try:
+        message.reply("🔄 Fetching download link, please wait...")
+        result = terabox(url)
+        message.reply(result, disable_web_page_preview=True)
+    except Exception as e:
+        message.reply(f"❌ **Error:** {str(e)}")
 
 
 
