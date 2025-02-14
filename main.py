@@ -1,19 +1,19 @@
 from pyrogram import Client, filters
+from pyrogram.types import Message
+from requests import Session
+from urllib.parse import urlparse, parse_qs
+from re import findall
+import os
+
+# Bot Credentials
 from vars import API_ID, API_HASH, BOT_TOKEN
 
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-from urllib.parse import urlparse, parse_qs
-from re import findall
-from requests import Session
-from pyrogram.types import Message
-import os
-
-
 class DirectDownloadLinkException(Exception):
     pass
 
-# ✅ Normal Cookies (Direct Dictionary)
+# 🔹 Fresh Cookies (Manually Exported from Browser)
 COOKIES = {
     "browserid": "oV3yVUBAotSkMW8ADJymPYDbtqG15hRwCCcrBl3CORYIWatFbhQeOPV6Z_Q=",
     "lang": "en",
@@ -25,8 +25,16 @@ COOKIES = {
     "ndus": "YQ0oArxteHuixh3XTpWEXoBKdp_oo2PImeTyMOUc"
 }
 
+# 🔹 Headers to Avoid Verification
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.1024tera.com/",
+    "Connection": "keep-alive"
+}
+
 def terabox(url):
-    details = {'contents':[], 'title': '', 'total_size': 0}
+    details = {'contents': [], 'title': '', 'total_size': 0}
 
     def __fetch_links(session, dir_='', folderPath=''):
         params = {
@@ -39,7 +47,7 @@ def terabox(url):
         else:
             params['root'] = '1'
         try:
-            _json = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES).json()
+            _json = session.get("https://www.1024tera.com/share/list", params=params, headers=HEADERS, cookies=COOKIES).json()
         except Exception as e:
             raise DirectDownloadLinkException(f'ERROR: {e.__class__.__name__}')
         if _json['errno'] not in [0, '0']:
@@ -59,7 +67,13 @@ def terabox(url):
                 details['contents'].append(item)
 
     with Session() as session:
-        _res = session.get(url, cookies=COOKIES)
+        session.cookies.update(COOKIES)
+        _res = session.get(url, headers=HEADERS, cookies=COOKIES)
+
+        # 🚨 Check if verification is required
+        if "verify" in _res.text.lower():
+            raise DirectDownloadLinkException("⚠️ ERROR: Terabox is asking for verification! Try updating cookies.")
+
         jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
         if not jsToken:
             raise DirectDownloadLinkException('ERROR: jsToken not found!')
