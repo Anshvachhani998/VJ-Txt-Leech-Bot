@@ -38,94 +38,78 @@ def get_readable_file_size(size):
     return f"{size:.2f} PB"
 
 
-def terabox(url):
+def fetch_links(url):
     details = {"contents": [], "title": "", "total_size": 0}
     
-    def __fetch_links(session, dir_="", folderPath=""):
-        params = {
-            "app_id": "250528",
-            "jsToken": jsToken,
-            "shorturl": shortUrl,
-        }
-        if dir_:
-            params["dir"] = dir_
-        else:
-            params["root"] = "1"
-        
-        try:
-            response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
-
-            # Log raw response
-            logging.debug(f"Raw Response Text: {response.text}")
-            
-            try:
-                if response.headers.get('Content-Type') == 'application/json':
-                    _json = response.json()
-                    logging.debug(f"Parsed Response JSON: {_json}")  # Log parsed JSON to debug
-                else:
-                    logging.error(f"Expected JSON, but got: {response.text}")
-                    raise DirectDownloadLinkException("ERROR: Expected JSON, but got a different format.")
-                
-                if "list" in _json:
-                    content_list = _json["list"]
-                    for content in content_list:
-                        if isinstance(content, dict) and "isdir" in content:
-                            if content["isdir"] in ["1", 1]:
-                                newFolderPath = path.join(folderPath, content["server_filename"]) if folderPath else content["server_filename"]
-                                __fetch_links(session, content["path"], newFolderPath)
-                            else:
-                                item = {
-                                    "url": content.get("dlink", ""),
-                                    "filename": content.get("server_filename", ""),
-                                    "path": folderPath or content.get("server_filename", ""),
-                                }
-                                details["total_size"] += float(content.get("size", 0))
-                                details["contents"].append(item)
-
-            except Exception as e:
-                logging.error(f"Error: {e}")
-                raise DirectDownloadLinkException(f"ERROR: Failed to parse JSON response.")
-        
-        except Exception as e:
-            logging.error(f"Error: {e}")
-            raise DirectDownloadLinkException(f"ERROR: {str(e)}")
-
     with Session() as session:
         try:
             _res = session.get(url, cookies=COOKIES)
-            logging.debug(f"Initial Response Text: {_res.text}")  # Log raw response text
+            logging.debug(f"Initial Response Text: {_res.text}")  
 
-            # Ensure the response is ok
             if not _res.ok:
                 logging.error(f"Error fetching URL: {_res.status_code} - {_res.text}")
                 raise DirectDownloadLinkException(f"Error fetching URL: {_res.status_code} - {_res.text}")
-            
-            # Extracting jsToken
+
             jsToken = findall(r'window\.jsToken.*%22(.*)%22', _res.text)
             if not jsToken:
                 logging.error("ERROR: jsToken not found!")
                 raise DirectDownloadLinkException("ERROR: jsToken not found!")
             jsToken = jsToken[0]
-            
-            # Extracting shortUrl
+
             surl = parse_qs(urlparse(_res.url).query).get("surl", [])
-            if len(surl) > 0:
-                shortUrl = surl[0]
-            else:
+            if not surl:
                 logging.error("ERROR: Could not find surl")
                 raise DirectDownloadLinkException("ERROR: Could not find surl")
+            shortUrl = surl[0]
+
+            params = {
+                "app_id": "250528",
+                "jsToken": jsToken,
+                "shorturl": shortUrl,
+                "root": "1"
+            }
             
-            logging.info("Fetching download links...")
-            __fetch_links(session)
+            response = session.get("https://www.1024tera.com/share/list", params=params, cookies=COOKIES)
+            logging.debug(f"Raw Response Text: {response.text}")
+
+            if response.headers.get('Content-Type') == 'application/json':
+                _json = response.json()
+                logging.debug(f"Parsed Response JSON: {_json}")
+
+                if "list" in _json:
+                    for content in _json["list"]:
+                        if isinstance(content, dict) and "isdir" in content:
+                            if content["isdir"] in ["1", 1]:
+                                logging.info(f"Skipping folder: {content['server_filename']}")
+                            else:
+                                details["contents"].append({
+                                    "url": content.get("dlink", ""),
+                                    "filename": content.get("server_filename", ""),
+                                    "size": content.get("size", 0)
+                                })
+                                details["total_size"] += float(content.get("size", 0))
+
+            else:
+                logging.error("ERROR: Response is not JSON")
+                raise DirectDownloadLinkException("ERROR: Response is not JSON")
+
         except Exception as e:
             logging.error(f"Error: {e}")
             raise DirectDownloadLinkException(f"ERROR: {str(e)}")
 
-    logging.info("Processing complete")
-    file_name = f"[{details['title']}]({url})"
-    file_size = get_readable_file_size(details["total_size"])
-    return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
+    return details
 
+
+def terabox(url):
+    details = fetch_links(url)
+
+    if not details["contents"]:
+        return "❌ **Error:** No downloadable content found."
+
+    file_name = f"[Terabox Link]({url})"
+    file_size = get_readable_file_size(details["total_size"])
+    
+    return f"📂 **Title:** {file_name}\n📏 **Size:** `{file_size}`\n🔗 **Link:** [Download]({details['contents'][0]['url']})"
 
 
 
