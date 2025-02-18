@@ -124,28 +124,23 @@ class TeraboxLink:
     def generateFastURL(self):
         r = requests.Session()
         try:
+            # **Get Redirected URL from Original Download Link**
             old_url = r.head(self.result['download_link']['url_1'], allow_redirects=True).url
-            logging.info(f"Old URL: {old_url}")  # Log the old URL
-            match = re.search(r'sign=([^&]+)', old_url)
-            if not match:
-                return
+            logging.info(f"Old URL: {old_url}")  
 
-            old_sign = match.group(1)
-            logging.info(f"Extracted sign: {old_sign}")  # Log the extracted sign
-            old_domain = re.search(r'://(.*?)\.', str(old_url)).group(1)
+            # **Get the Direct Link by Following Redirects**
+            response = r.head(old_url, headers=self.headers, cookies={'cookie': self.cookie}, allow_redirects=True)
+            direct_link = response.headers.get("location")
 
-            fast_url = old_url.replace(old_domain, 'd8')
-            new_req = r.get(fast_url, headers=self.headers, cookies={'cookie': self.cookie}, allow_redirects=True)
-            new_url = new_req.url
-            
-            logging.info(f"New URL after redirect: {new_url}")  # Log the new URL
-            if 'sign=' in new_url:
-                self.result['download_link'].update({'url_2': new_url})
+            if direct_link:
+                logging.info(f"Direct Download Link: {direct_link}")
+                self.result['download_link'].update({'direct_url': direct_link})
 
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Error in generating direct URL: {e}")
+
         r.close()
-
+        
 @bot.on_message(filters.command("start"))
 def start(client, message):
     message.reply_text("Send me a Terabox link, and I'll fetch the file list for you!")
@@ -192,6 +187,7 @@ def handle_terabox(client, message):
                 if terabox_link.result['status'] == 'success':
                     download_link = terabox_link.result['download_link']
                     file_info += f"🔗 Download: {download_link.get('url_1', 'No link available')}\n"
+                    file_info += f"🔗 Download: {download_link.get('direct_url', 'No link available')}\n"
         
         message.reply_text(file_info)
     else:
