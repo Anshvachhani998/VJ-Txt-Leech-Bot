@@ -88,7 +88,7 @@ class TeraboxLink:
         self.r = requests.Session()
         self.headers = HEADERS
         self.result = {'status': 'failed', 'download_link': {}}
-        self.cookie = COOKIES
+        self.cookie = cookie
         self.dynamic_params = {
             'uk': str(uk),
             'sign': str(sign),
@@ -111,9 +111,7 @@ class TeraboxLink:
     def generate(self):
         params = {**self.dynamic_params, **self.static_param}
         url = 'https://www.terabox.com/share/download?' + '&'.join([f'{a}={b}' for a, b in params.items()])
-        
-        # Include cookies in the request
-        req = self.r.get(url, cookies={'cookie': self.cookie}, headers=self.headers).json()
+        req = self.r.get(url, cookies={'cookie': self.cookie}).json()
 
         if not req['errno']:
             slow_url = req['dlink']
@@ -134,7 +132,6 @@ class TeraboxLink:
         except:
             pass
         r.close()
-
 
 @bot.on_message(filters.command("start"))
 def start(client, message):
