@@ -1,16 +1,20 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message
-import requests
-import re
+from requests import Session
 import logging
+import re
+import requests
+
+# Bot Credentials
 from vars import API_ID, API_HASH, BOT_TOKEN
 
-# Initialize bot
 bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 logging.basicConfig(level=logging.INFO)
 
-# Headers for Terabox requests
+COOKIES = "csrfToken=IBIE5YJHsvqJ5hfy10amPsvU; browserid=ySMpd69WOmpOVcBr8EzVItH__ky9pLg80woRGa9pfYz84x8T0yT5gONXP1g=; lang=en; TSID=AhNUgmZZ4LPb42wLnaq48UqjxmaQyIWJ; __bid_n=194f9a145f6c8074ea4207; _ga=GA1.1.1167242207.1739354886; ndus=Yfszi3CteHuiKo8GYWi0KHQwRCBf3Cybm-JiIY2I; ndut_fmt=CDD95A727FFAF01EA8842D001BBC5CB06A0B69F5D9DDE59F9D8274518871F757; _ga_06ZNKL8C2E=GS1.1.1739354886.1.1.1739355565.57.0.0"
+
+# Terabox cookie and headers
 HEADERS = {
     "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
 }
@@ -19,10 +23,7 @@ class TeraboxFile:
     def __init__(self):
         self.r = requests.Session()
         self.headers = HEADERS
-        self.result = {
-            'status': 'failed', 'js_token': '', 'browser_id': '', 'cookie': '',
-            'sign': '', 'timestamp': '', 'shareid': '', 'uk': '', 'list': []
-        }
+        self.result = {'status': 'failed', 'js_token': '', 'browser_id': '', 'cookie': '', 'sign': '', 'timestamp': '', 'shareid': '', 'uk': '', 'list': []}
 
     def search(self, url):
         req = self.r.get(url, allow_redirects=True)
@@ -36,27 +37,34 @@ class TeraboxFile:
         js_token = re.search(r'%28%22(.*?)%22%29', str(req.text.replace('\\', ''))).group(1)
         browser_id = req.cookies.get_dict().get('browserid')
         cookie = 'lang=id;' + ';'.join([f'{a}={b}' for a, b in self.r.cookies.get_dict().items()])
-        self.result.update({'js_token': js_token, 'browser_id': browser_id, 'cookie': cookie})
+        self.result['js_token'] = js_token
+        self.result['browser_id'] = browser_id
+        self.result['cookie'] = cookie
 
     def getMainFile(self):
         url = f'https://www.terabox.com/api/shorturlinfo?app_id=250528&shorturl=1{self.short_url}&root=1'
         req = self.r.get(url, headers=self.headers, cookies={'cookie': ''}).json()
         all_file = self.packData(req, self.short_url)
-        if all_file:
-            self.result.update({
-                'sign': req['sign'], 'timestamp': req['timestamp'],
-                'shareid': req['shareid'], 'uk': req['uk'], 'list': all_file, 'status': 'success'
-            })
+        if len(all_file):
+            self.result['sign'] = req['sign']
+            self.result['timestamp'] = req['timestamp']
+            self.result['shareid'] = req['shareid']
+            self.result['uk'] = req['uk']
+            self.result['list'] = all_file
+            self.result['status'] = 'success'
 
     def packData(self, req, short_url):
-        return [{
-            'is_dir': item['isdir'], 'path': item['path'], 'fs_id': item['fs_id'],
+        all_file = [{
+            'is_dir': item['isdir'],
+            'path': item['path'],
+            'fs_id': item['fs_id'],
             'name': item['server_filename'],
-            'type': self.checkFileType(item['server_filename']) if not item['isdir'] else 'other',
-            'size': item.get('size', '') if not item['isdir'] else '',
-            'image': item.get('thumbs', {}).get('url3', '') if not item['isdir'] else '',
-            'list': self.getChildFile(short_url, item['path'], '0') if item['isdir'] else [],
+            'type': self.checkFileType(item['server_filename']) if not bool(int(item.get('isdir'))) else 'other',
+            'size': item.get('size') if not bool(int(item.get('isdir'))) else '',
+            'image': item.get('thumbs', {}).get('url3', '') if not bool(int(item.get('isdir'))) else '',
+            'list': self.getChildFile(short_url, item['path'], '0') if item.get('isdir') else [],
         } for item in req.get('list', [])]
+        return all_file
 
     def getChildFile(self, short_url, path='', root='0'):
         params = {'app_id': '250528', 'shorturl': short_url, 'root': root, 'dir': path}
@@ -66,11 +74,11 @@ class TeraboxFile:
 
     def checkFileType(self, name):
         name = name.lower()
-        if any(ext in name for ext in ['.mp4', '.mkv', '.avi']):
+        if any(ext in name for ext in ['.mp4', '.mov', '.m4v', '.mkv', '.asf', '.avi', '.wmv', '.m2ts', '.3g2']):
             return 'video'
-        elif any(ext in name for ext in ['.jpg', '.png', '.gif']):
+        elif any(ext in name for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']):
             return 'image'
-        elif any(ext in name for ext in ['.pdf', '.zip', '.rar']):
+        elif any(ext in name for ext in ['.pdf', '.docx', '.zip', '.rar', '.7z']):
             return 'file'
         else:
             return 'other'
@@ -82,14 +90,22 @@ class TeraboxLink:
         self.result = {'status': 'failed', 'download_link': {}}
         self.cookie = cookie
         self.dynamic_params = {
-            'uk': str(uk), 'sign': str(sign), 'shareid': str(shareid),
-            'primaryid': str(shareid), 'timestamp': str(timestamp),
-            'jsToken': str(js_token), 'fid_list': f'[{fs_id}]'
+            'uk': str(uk),
+            'sign': str(sign),
+            'shareid': str(shareid),
+            'primaryid': str(shareid),
+            'timestamp': str(timestamp),
+            'jsToken': str(js_token),
+            'fid_list': str(f'[{fs_id}]')
         }
         self.static_param = {
-            'app_id': '250528', 'channel': 'dubox',
-            'product': 'share', 'clienttype': '0',
-            'dp-logid': '', 'nozip': '0', 'web': '1'
+            'app_id': '250528',
+            'channel': 'dubox',
+            'product': 'share',
+            'clienttype': '0',
+            'dp-logid': '',
+            'nozip': '0',
+            'web': '1'
         }
 
     def generate(self):
@@ -133,7 +149,14 @@ def start(client, message):
 
 @bot.on_message(filters.command("terabox"))
 def handle_terabox(client, message):
-    url = message.text.split(' ', 1)[1].strip()
+    url = message.text.split(' ', 1)
+    
+    if len(url) < 2:
+        message.reply_text("Please provide a Terabox URL after the command.")
+        return
+
+    url = url[1].strip()
+
     if "terabox" not in url:
         message.reply_text("Please send a valid Terabox link!")
         return
@@ -149,16 +172,26 @@ def handle_terabox(client, message):
             size = f"{file['size']} bytes" if file['size'] else "📁 Folder"
             file_info += f"📄 {file['name']} - {size}\n"
 
-            if file['type'] != 'other':
-                link = TeraboxLink(file['fs_id'], tf.result['uk'], tf.result['shareid'],
-                                   tf.result['timestamp'], tf.result['sign'], tf.result['js_token'], tf.result['cookie'])
-                link.generate()
-                if link.result['status'] == 'success':
-                    file_info += f"🔗 Download: {link.result['download_link'].get('url_1', 'No link')}\n"
-                    file_info += f"⚡ Fast: {link.result['download_link'].get('url_2', 'No link')}\n"
+            # Add download link generation logic for files
+            if file['type'] != 'other':  # Only files (not directories)
+                fs_id = file['fs_id']
+                uk = tf.result['uk']
+                shareid = tf.result['shareid']
+                timestamp = tf.result['timestamp']
+                sign = tf.result['sign']
+                js_token = tf.result['js_token']
+                cookie = tf.result['cookie']
+                
+                # Generate download link
+                terabox_link = TeraboxLink(fs_id, uk, shareid, timestamp, sign, js_token, cookie)
+                terabox_link.generate()
 
+                if terabox_link.result['status'] == 'success':
+                    download_link = terabox_link.result['download_link']
+                    file_info += f"🔗 Download: {download_link.get('url_2', 'No link available')}\n"
+        
         message.reply_text(file_info)
     else:
-        message.reply_text("Failed to fetch details!")
+        message.reply_text("Failed to fetch details. Please check the link!")
 
 bot.run()
