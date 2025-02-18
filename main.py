@@ -1,9 +1,9 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from requests import Session
-from urllib.parse import urlparse, parse_qs
-from re import findall
 import logging
+import re
+import requests
 
 # Bot Credentials
 from vars import API_ID, API_HASH, BOT_TOKEN
@@ -12,17 +12,12 @@ bot = Client("MovieBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 logging.basicConfig(level=logging.INFO)
 
-
 COOKIES = "csrfToken=IBIE5YJHsvqJ5hfy10amPsvU; browserid=ySMpd69WOmpOVcBr8EzVItH__ky9pLg80woRGa9pfYz84x8T0yT5gONXP1g=; lang=en; TSID=AhNUgmZZ4LPb42wLnaq48UqjxmaQyIWJ; __bid_n=194f9a145f6c8074ea4207; _ga=GA1.1.1167242207.1739354886; ndus=Yfszi3CteHuiKo8GYWi0KHQwRCBf3Cybm-JiIY2I; ndut_fmt=CDD95A727FFAF01EA8842D001BBC5CB06A0B69F5D9DDE59F9D8274518871F757; _ga_06ZNKL8C2E=GS1.1.1739354886.1.1.1739355565.57.0.0"
-
-import re
-import requests
 
 # Terabox cookie and headers
 HEADERS = {
     "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
 }
-
 
 class TeraboxFile:
     def __init__(self):
@@ -88,6 +83,56 @@ class TeraboxFile:
         else:
             return 'other'
 
+class TeraboxLink:
+    def __init__(self, fs_id, uk, shareid, timestamp, sign, js_token, cookie):
+        self.r = requests.Session()
+        self.headers = HEADERS
+        self.result = {'status': 'failed', 'download_link': {}}
+        self.cookie = cookie
+        self.dynamic_params = {
+            'uk': str(uk),
+            'sign': str(sign),
+            'shareid': str(shareid),
+            'primaryid': str(shareid),
+            'timestamp': str(timestamp),
+            'jsToken': str(js_token),
+            'fid_list': str(f'[{fs_id}]')
+        }
+        self.static_param = {
+            'app_id': '250528',
+            'channel': 'dubox',
+            'product': 'share',
+            'clienttype': '0',
+            'dp-logid': '',
+            'nozip': '0',
+            'web': '1'
+        }
+
+    def generate(self):
+        params = {**self.dynamic_params, **self.static_param}
+        url = 'https://www.terabox.com/share/download?' + '&'.join([f'{a}={b}' for a, b in params.items()])
+        req = self.r.get(url, cookies={'cookie': self.cookie}).json()
+
+        if not req['errno']:
+            slow_url = req['dlink']
+            self.result['download_link'].update({'url_1': slow_url})
+            self.result['status'] = 'success'
+            self.generateFastURL()
+
+        self.r.close()
+
+    def generateFastURL(self):
+        r = requests.Session()
+        try:
+            old_url = r.head(self.result['download_link']['url_1'], allow_redirects=True).url
+            old_domain = re.search(r'://(.*?)\.', str(old_url)).group(1)
+            medium_url = old_url.replace('by=themis', 'by=dapunta')
+            fast_url = old_url.replace(old_domain, 'd3').replace('by=themis', 'by=dapunta')
+            self.result['download_link'].update({'url_2': medium_url, 'url_3': fast_url})
+        except:
+            pass
+        r.close()
+
 @bot.on_message(filters.command("start"))
 def start(client, message):
     message.reply_text("Send me a Terabox link, and I'll fetch the file list for you!")
@@ -116,6 +161,24 @@ def handle_terabox(client, message):
         for file in tf.result['list']:
             size = f"{file['size']} bytes" if file['size'] else "📁 Folder"
             file_info += f"📄 {file['name']} - {size}\n"
+
+            # Add download link generation logic for files
+            if file['type'] != 'other':  # Only files (not directories)
+                fs_id = file['fs_id']
+                uk = tf.result['uk']
+                shareid = tf.result['shareid']
+                timestamp = tf.result['timestamp']
+                sign = tf.result['sign']
+                js_token = tf.result['js_token']
+                cookie = tf.result['cookie']
+                
+                # Generate download link
+                terabox_link = TeraboxLink(fs_id, uk, shareid, timestamp, sign, js_token, cookie)
+                terabox_link.generate()
+
+                if terabox_link.result['status'] == 'success':
+                    download_link = terabox_link.result['download_link']
+                    file_info += f"🔗 Download: {download_link.get('url_3', 'No link available')}\n"
         
         message.reply_text(file_info)
     else:
