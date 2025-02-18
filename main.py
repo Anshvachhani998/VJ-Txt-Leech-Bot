@@ -110,7 +110,7 @@ class TeraboxLink:
 
     def generate(self):
         params = {**self.dynamic_params, **self.static_param}
-        url = 'https://www.terabox.com/share/download?' + '&'.join([f'{a}={b}' for a, b in params.items()])
+        url = 'https://www.freeterabox.com/share/download?' + '&'.join([f'{a}={b}' for a, b in params.items()])
         req = self.r.get(url, cookies={'cookie': self.cookie}).json()
 
         if not req['errno']:
@@ -120,29 +120,28 @@ class TeraboxLink:
             self.generateFastURL()
 
         self.r.close()
-    
+
     def generateFastURL(self):
         r = requests.Session()
         try:
-            # Step 1: Fetch the final redirected slow link
             old_url = r.head(self.result['download_link']['url_1'], allow_redirects=True).url
+            match = re.search(r'sign=([^&]+)', old_url)
+            if not match:
+                return
+
+            old_sign = match.group(1)
             old_domain = re.search(r'://(.*?)\.', str(old_url)).group(1)
 
-            # Step 2: Replace `d.terabox.com` with `d3.terabox.com` for fast link
-            fast_url = old_url.replace(old_domain, 'd3')
+            fast_url = old_url.replace(old_domain, 'd8')
+            new_req = r.get(fast_url, headers=self.headers, cookies={'cookie': self.cookie}, allow_redirects=True)
+            new_url = new_req.url
 
-            # Step 3: Check if fast link is valid (avoid sign error)
-            new_req = r.head(fast_url, headers=self.headers, cookies={'cookie': self.cookie}, allow_redirects=True)
-
-            if new_req.status_code == 200 and 'sign=' in fast_url:
-                self.result['download_link'].update({'url_2': fast_url})
-            else:
-                self.result['download_link'].update({'url_2': 'Fast link unavailable'})
+            if 'sign=' in new_url:
+                self.result['download_link'].update({'url_2': new_url})
 
         except Exception:
-            self.result['download_link'].update({'url_2': 'Fast link error'})
+            pass
         r.close()
-
 
 @bot.on_message(filters.command("start"))
 def start(client, message):
