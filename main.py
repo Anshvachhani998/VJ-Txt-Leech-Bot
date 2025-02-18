@@ -125,17 +125,20 @@ class TeraboxLink:
         r = requests.Session()
         try:
             old_url = r.head(self.result['download_link']['url_1'], allow_redirects=True).url
+            logging.info(f"Old URL: {old_url}")  # Log the old URL
             match = re.search(r'sign=([^&]+)', old_url)
             if not match:
                 return
 
             old_sign = match.group(1)
+            logging.info(f"Extracted sign: {old_sign}")  # Log the extracted sign
             old_domain = re.search(r'://(.*?)\.', str(old_url)).group(1)
 
             fast_url = old_url.replace(old_domain, 'd8')
             new_req = r.get(fast_url, headers=self.headers, cookies={'cookie': self.cookie}, allow_redirects=True)
             new_url = new_req.url
-
+            
+            logging.info(f"New URL after redirect: {new_url}")  # Log the new URL
             if 'sign=' in new_url:
                 self.result['download_link'].update({'url_2': new_url})
 
