@@ -178,7 +178,7 @@ def handle_terabox(client, message):
 
                 if terabox_link.result['status'] == 'success':
                     download_link = terabox_link.result['download_link']
-                    file_info += f"🔗 Download: {download_link.get('url_3', 'No link available')}\n"
+                    file_info += f"🔗 Download: {download_link.get('url_1', 'No link available')}\n"
         
         message.reply_text(file_info)
     else:
